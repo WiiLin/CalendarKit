@@ -43,7 +43,10 @@ class CustomCalendarExampleController: DayViewController {
   var colors = [UIColor.blue,
                 UIColor.yellow,
                 UIColor.green,
-                UIColor.red]
+                UIColor.red,
+                UIColor.brown,
+                UIColor.cyan,
+                UIColor.orange]
 
   private lazy var rangeFormatter: DateIntervalFormatter = {
     let fmt = DateIntervalFormatter()
