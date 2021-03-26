@@ -66,6 +66,9 @@ class CustomCalendarExampleController: DayViewController {
     navigationController?.navigationBar.isTranslucent = false
     dayView.autoScrollToFirstEvent = true
     reloadData()
+    var timeLimeStyle = TimelineStyle()
+    timeLimeStyle.groupCount = colors.count
+    dayView.timelinePagerView.updateStyle(timeLimeStyle)
   }
   
   // MARK: EventDataSource
@@ -89,17 +92,17 @@ class CustomCalendarExampleController: DayViewController {
       event.startDate = workingDate
       event.endDate = Calendar.current.date(byAdding: .minute, value: duration, to: workingDate)!
 
-      var info = data[Int(arc4random_uniform(UInt32(data.count)))]
+      let radomInt = Int.random(in: 0..<colors.count)
+      var info = data[radomInt]
       
       let timezone = dayView.calendar.timeZone
       print(timezone)
-
       info.append(rangeFormatter.string(from: event.startDate, to: event.endDate))
       event.text = info.reduce("", {$0 + $1 + "\n"})
-      event.color = colors[Int(arc4random_uniform(UInt32(colors.count)))]
+      event.color = colors[radomInt]
       event.isAllDay = Int(arc4random_uniform(2)) % 2 == 0
       event.lineBreakMode = .byTruncatingTail
-      event.group = Int.random(in: 0...6)
+      event.group = radomInt
       
       // Event styles are updated independently from CalendarStyle
       // hence the need to specify exact colors in case of Dark style
@@ -180,17 +183,17 @@ class CustomCalendarExampleController: DayViewController {
     let duration = Int(arc4random_uniform(160) + 60)
     let startDate = Calendar.current.date(byAdding: .minute, value: -Int(CGFloat(duration) / 2), to: date)!
     let event = Event()
-
+    let radomInt = Int.random(in: 0..<colors.count)
     event.startDate = startDate
     event.endDate = Calendar.current.date(byAdding: .minute, value: duration, to: startDate)!
     
-    var info = data[Int(arc4random_uniform(UInt32(data.count)))]
+    var info = data[radomInt]
 
     info.append(rangeFormatter.string(from: event.startDate, to: event.endDate))
     event.text = info.reduce("", {$0 + $1 + "\n"})
-    event.color = colors[Int(arc4random_uniform(UInt32(colors.count)))]
+    event.color = colors[radomInt]
     event.editedEvent = event
-    
+    event.group = radomInt
     // Event styles are updated independently from CalendarStyle
     // hence the need to specify exact colors in case of Dark style
     if #available(iOS 12.0, *) {

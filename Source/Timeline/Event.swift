@@ -39,6 +39,7 @@ public final class Event: EventDescriptor {
     cloned.textColor = textColor
     cloned.userInfo = userInfo
     cloned.editedEvent = self
+    cloned.group = group
     return cloned
   }
 
