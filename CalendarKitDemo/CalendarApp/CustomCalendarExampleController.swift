@@ -35,6 +35,43 @@ class CustomCalendarExampleController: DayViewController {
                "Mikpoli MB310",
                "Craig Federighi"],
               
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+              
   ]
   
   var generatedEvents = [EventDescriptor]()
@@ -43,7 +80,19 @@ class CustomCalendarExampleController: DayViewController {
   var colors = [UIColor.blue,
                 UIColor.yellow,
                 UIColor.green,
-                UIColor.red]
+                UIColor.red,
+                UIColor.brown,
+                UIColor.cyan,
+                UIColor.orange,
+                UIColor.blue,
+                UIColor.yellow,
+                UIColor.green,
+                UIColor.red,
+                UIColor.brown,
+                UIColor.cyan,
+                UIColor.orange]
+  
+  var groups = ["設計師1\n(123)","設計師2","設計師3","設計師4","設計師5","設計師6","設計師7","設計師8","設計師9","設計師10","設計師11","設計師12","設計師13","設計師14"]
 
   private lazy var rangeFormatter: DateIntervalFormatter = {
     let fmt = DateIntervalFormatter()
@@ -54,10 +103,28 @@ class CustomCalendarExampleController: DayViewController {
   }()
 
   override func loadView() {
-    calendar.timeZone = TimeZone(identifier: "Europe/Paris")!
+//    calendar.timeZone = TimeZone(identifier: "Europe/Paris")!
 
     dayView = DayView(calendar: calendar)
     view = dayView
+  }
+  
+  func make12hStrings() -> [String] {
+    var numbers = [String]()
+    numbers.append("12")
+
+    for i in 1...11 {
+      let string = String(i)
+      numbers.append(string)
+    }
+
+    var am = numbers.map { $0 + "😀" + calendar.amSymbol}
+    var pm = numbers.map { $0 + "😀" + calendar.pmSymbol}
+    
+    am.append("GG:YY")
+    pm.removeFirst()
+    pm.append(am.first!)
+    return am + pm
   }
   
   override func viewDidLoad() {
@@ -66,6 +133,12 @@ class CustomCalendarExampleController: DayViewController {
     navigationController?.navigationBar.isTranslucent = false
     dayView.autoScrollToFirstEvent = true
     reloadData()
+    
+    var timeLimeStyle = TimelineStyle()
+    timeLimeStyle.dateStyle = .custom(timeStrings: make12hStrings())
+    timeLimeStyle.timeIndicator.dateStyle = .custom(timeStrings: make12hStrings())
+    timeLimeStyle.group = groups
+    dayView.timelinePagerView.updateStyle(timeLimeStyle)
   }
   
   // MARK: EventDataSource
@@ -89,16 +162,17 @@ class CustomCalendarExampleController: DayViewController {
       event.startDate = workingDate
       event.endDate = Calendar.current.date(byAdding: .minute, value: duration, to: workingDate)!
 
-      var info = data[Int(arc4random_uniform(UInt32(data.count)))]
+      let radomInt = Int.random(in: 0..<colors.count)
+      var info = data[radomInt]
       
       let timezone = dayView.calendar.timeZone
       print(timezone)
-
       info.append(rangeFormatter.string(from: event.startDate, to: event.endDate))
       event.text = info.reduce("", {$0 + $1 + "\n"})
-      event.color = colors[Int(arc4random_uniform(UInt32(colors.count)))]
+      event.color = .lightGray
       event.isAllDay = Int(arc4random_uniform(2)) % 2 == 0
       event.lineBreakMode = .byTruncatingTail
+      event.group = radomInt
       
       // Event styles are updated independently from CalendarStyle
       // hence the need to specify exact colors in case of Dark style
@@ -179,17 +253,17 @@ class CustomCalendarExampleController: DayViewController {
     let duration = Int(arc4random_uniform(160) + 60)
     let startDate = Calendar.current.date(byAdding: .minute, value: -Int(CGFloat(duration) / 2), to: date)!
     let event = Event()
-
+    let radomInt = Int.random(in: 0..<colors.count)
     event.startDate = startDate
     event.endDate = Calendar.current.date(byAdding: .minute, value: duration, to: startDate)!
     
-    var info = data[Int(arc4random_uniform(UInt32(data.count)))]
+    var info = data[radomInt]
 
     info.append(rangeFormatter.string(from: event.startDate, to: event.endDate))
     event.text = info.reduce("", {$0 + $1 + "\n"})
-    event.color = colors[Int(arc4random_uniform(UInt32(colors.count)))]
+    event.color = .lightGray
     event.editedEvent = event
-    
+    event.group = radomInt
     // Event styles are updated independently from CalendarStyle
     // hence the need to specify exact colors in case of Dark style
     if #available(iOS 12.0, *) {

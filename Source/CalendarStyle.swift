@@ -10,6 +10,40 @@ public enum DateStyle {
     
     ///Times should be shown according to the user's system preference.
     case system
+    
+    case custom(start24Hour: Int, end24Hour: Int, timeStrings: [String])
+    
+    public var count: Int {
+        switch self {
+        case let .custom(_, _, timeStrings):
+            return timeStrings.count
+        default:
+            return 24
+        }
+    }
+    
+    func real24Hour(original24Hour: Int) -> Int{
+        switch self {
+        case let .custom(start24Hour, _, _):
+            return original24Hour - start24Hour
+        default:
+            return original24Hour
+        }
+    }
+    
+    
+    public func inHourRange(startDate: Date, endDate: Date) -> Bool {
+        switch self {
+        case let .custom(start24Hour, end24Hour, _):
+            let calendar = Calendar.current
+            let date = Date() // 取得目前時間
+            let startDateHour = calendar.component(.hour, from: startDate)
+            let endDateHour = calendar.component(.hour, from: endDate)
+            return startDateHour >= start24Hour && endDateHour <= end24Hour
+        default:
+            return true
+        }
+    }
 }
 
 public struct CalendarStyle {
@@ -65,13 +99,34 @@ public struct TimelineStyle {
   public var backgroundColor = SystemColors.systemBackground
   public var font = UIFont.boldSystemFont(ofSize: 11)
   public var dateStyle : DateStyle = .system
-  public var eventsWillOverlap: Bool = false
   public var minimumEventDurationInMinutesWhileEditing: Int = 30
   public var splitMinuteInterval: Int = 15
-  public var verticalDiff: CGFloat = 50
+  public var verticalDiff: CGFloat = 100
   public var verticalInset: CGFloat = 10
   public var leadingInset: CGFloat = 53
   public var eventGap: CGFloat = 0
+  public var group:[String] = []
+    var groupCount: Int {
+        return group.isEmpty ? 1 : group.count
+    }
+    
+    public var fixWidthGroupCount: Int = 7
+    
+    func contentWidth() -> CGFloat {
+        if groupCount <= fixWidthGroupCount {
+            return UIScreen.main.bounds.width
+        } else {
+            return leadingInset + (110.0 * CGFloat(groupCount))
+        }
+    }
+    
+    func groupWidth() -> CGFloat {
+        if groupCount <= fixWidthGroupCount {
+            return (UIScreen.main.bounds.width - leadingInset) / CGFloat(groupCount)
+        } else {
+            return 110
+        }
+    }
   public init() {}
 }
 

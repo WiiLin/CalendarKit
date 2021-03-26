@@ -2,9 +2,11 @@ import UIKit
 
 public final class TimelineContainer: UIScrollView {
   public let timeline: TimelineView
+  weak var container: TimelineContainerController?
   
-  public init(_ timeline: TimelineView) {
+  public init(_ timeline: TimelineView, container: TimelineContainerController?) {
     self.timeline = timeline
+      self.container = container
     super.init(frame: .zero)
   }
   
@@ -14,9 +16,9 @@ public final class TimelineContainer: UIScrollView {
   
   override public func layoutSubviews() {
     super.layoutSubviews()
-    timeline.frame = CGRect(x: 0, y: 0, width: bounds.width, height: timeline.fullHeight)
+    timeline.frame = CGRect(x: 0, y: 0, width: timeline.style.contentWidth(), height: timeline.fullHeight)
     timeline.offsetAllDayView(by: contentOffset.y)
-    
+    self.bounces = false
     
     //adjust the scroll insets
     let allDayViewHeight = timeline.allDayViewHeight
@@ -28,6 +30,7 @@ public final class TimelineContainer: UIScrollView {
     }
     scrollIndicatorInsets = UIEdgeInsets(top: allDayViewHeight, left: 0, bottom: bottomSafeInset, right: 0)
     contentInset = UIEdgeInsets(top: allDayViewHeight, left: 0, bottom: bottomSafeInset, right: 0)
+      container?.viewDidLayoutSubviews()
   }
   
   public func prepareForReuse() {

@@ -13,8 +13,15 @@ open class EventView: UIView {
     view.isUserInteractionEnabled = false
     view.backgroundColor = .clear
     view.isScrollEnabled = false
+    view.textContainerInset.top = 1
+    view.textContainerInset.left = 0
     return view
   }()
+    
+    public lazy var imageView: UIImageView = {
+        let imageView = UIImageView()
+        return imageView
+    }()
 
   /// Resize Handle views showing up when editing the event.
   /// The top handle has a tag of `0` and the bottom has a tag of `1`
@@ -34,11 +41,14 @@ open class EventView: UIView {
     clipsToBounds = false
     color = tintColor
     addSubview(textView)
+    addSubview(imageView)
     
     for (idx, handle) in eventResizeHandles.enumerated() {
       handle.tag = idx
       addSubview(handle)
     }
+      self.layer.cornerRadius = 2
+      self.clipsToBounds = true
   }
 
   public func updateWithDescriptor(event: EventDescriptor) {
@@ -54,12 +64,15 @@ open class EventView: UIView {
     }
     descriptor = event
     backgroundColor = event.backgroundColor
+      layer.borderColor = event.borderColor.cgColor
+      layer.borderWidth = event.borderWidth
     color = event.color
     eventResizeHandles.forEach{
       $0.borderColor = event.color
       $0.isHidden = event.editedEvent == nil
     }
     drawsShadow = event.editedEvent != nil
+      imageView.image = event.image
     setNeedsDisplay()
     setNeedsLayout()
   }
@@ -117,38 +130,47 @@ open class EventView: UIView {
 
   private var drawsShadow = false
 
-  override open func layoutSubviews() {
-    super.layoutSubviews()
-    textView.frame = {
-        if UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft {
-            return CGRect(x: bounds.minX, y: bounds.minY, width: bounds.width - 3, height: bounds.height)
-        } else {
-            return CGRect(x: bounds.minX + 3, y: bounds.minY, width: bounds.width - 3, height: bounds.height)
+    override open func layoutSubviews() {
+        super.layoutSubviews()
+        let imageWidth = 20.0
+        let padding = 3.0
+        textView.frame = {
+            return CGRect(x: bounds.minX + padding,
+                          y: bounds.minY,
+                          width: bounds.width - padding - imageWidth - padding,
+                          height: bounds.height)
+        }()
+        imageView.frame = {
+            return CGRect(x: bounds.maxX - imageWidth - padding,
+                          y: bounds.minY + padding,
+                          width: imageWidth,
+                          height: imageWidth)
+        }()
+        
+        if frame.minY < 0 {
+            var textFrame = textView.frame;
+            textFrame.origin.y = frame.minY * -1;
+            textFrame.size.height += frame.minY;
+            textView.frame = textFrame;
         }
-    }()
-    if frame.minY < 0 {
-      var textFrame = textView.frame;
-      textFrame.origin.y = frame.minY * -1;
-      textFrame.size.height += frame.minY;
-      textView.frame = textFrame;
+        
+        let first = eventResizeHandles.first
+        let last = eventResizeHandles.last
+        let radius: CGFloat = 40
+        let yPad: CGFloat =  -radius / 2
+        let width = bounds.width
+        let height = bounds.height
+        let size = CGSize(width: radius, height: radius)
+        first?.frame = CGRect(origin: CGPoint(x: width - radius - layoutMargins.right, y: yPad),
+                              size: size)
+        last?.frame = CGRect(origin: CGPoint(x: layoutMargins.left, y: height - yPad - radius),
+                             size: size)
+        
+        if drawsShadow {
+            applySketchShadow(alpha: 0.13,
+                              blur: 10)
+        }
     }
-    let first = eventResizeHandles.first
-    let last = eventResizeHandles.last
-    let radius: CGFloat = 40
-    let yPad: CGFloat =  -radius / 2
-    let width = bounds.width
-    let height = bounds.height
-    let size = CGSize(width: radius, height: radius)
-    first?.frame = CGRect(origin: CGPoint(x: width - radius - layoutMargins.right, y: yPad),
-                          size: size)
-    last?.frame = CGRect(origin: CGPoint(x: layoutMargins.left, y: height - yPad - radius),
-                         size: size)
-    
-    if drawsShadow {
-      applySketchShadow(alpha: 0.13,
-                        blur: 10)
-    }
-  }
 
   private func applySketchShadow(
     color: UIColor = .black,
@@ -158,7 +180,7 @@ open class EventView: UIView {
     blur: CGFloat = 4,
     spread: CGFloat = 0)
   {
-    layer.shadowColor = color.cgColor
+      layer.shadowColor = UIColor.red.cgColor
     layer.shadowOpacity = alpha
     layer.shadowOffset = CGSize(width: x, height: y)
     layer.shadowRadius = blur / 2.0

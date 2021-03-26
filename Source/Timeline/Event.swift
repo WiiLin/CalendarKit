@@ -1,6 +1,10 @@
 import UIKit
 
 public final class Event: EventDescriptor {
+public var image: UIImage? =  nil
+    
+ public var group: Int = 0
+    
   public var startDate = Date()
   public var endDate = Date()
   public var isAllDay = false
@@ -21,6 +25,8 @@ public final class Event: EventDescriptor {
       updateColors()
     }
   }
+    public var borderColor: UIColor = .clear
+    public var borderWidth: CGFloat = 0
 
   public init() {}
 
@@ -37,6 +43,9 @@ public final class Event: EventDescriptor {
     cloned.textColor = textColor
     cloned.userInfo = userInfo
     cloned.editedEvent = self
+    cloned.group = group
+      cloned.borderColor = borderColor
+      cloned.borderWidth = borderWidth
     return cloned
   }
 

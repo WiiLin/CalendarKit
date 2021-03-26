@@ -15,4 +15,8 @@ public protocol EventDescriptor: AnyObject {
   var editedEvent: EventDescriptor? {get set}
   func makeEditable() -> Self
   func commitEditing()
+  var group: Int {get}
+  var borderColor: UIColor {get set}
+  var borderWidth: CGFloat {get set}
+  var image: UIImage? {get set}
 }

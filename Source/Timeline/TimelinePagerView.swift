@@ -36,7 +36,7 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
   private var pagingViewController = UIPageViewController(transitionStyle: .scroll,
                                                   navigationOrientation: .horizontal,
                                                   options: nil)
-  private var style = TimelineStyle()
+  public private(set) var style = TimelineStyle()
 
   private lazy var panGestureRecoognizer = UIPanGestureRecognizer(target: self,
                                                           action: #selector(handlePanGesture(_:)))
@@ -149,6 +149,7 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
   public func scrollViewDidScroll(_ scrollView: UIScrollView) {
     let offset = scrollView.contentOffset
     let diff = offset.y - initialContentOffset.y
+      currentTimeline?.lockContainer.contentOffset = .init(x: 0, y: offset.y)
     if let event = pendingEvent {
       var frame = event.frame
       frame.origin.y -= diff

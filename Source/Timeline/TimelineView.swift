@@ -16,7 +16,7 @@ public final class TimelineView: UIView {
     }
   }
 
-  private var currentTime: Date {
+  public var currentTime: Date {
     return Date()
   }
 
@@ -42,7 +42,7 @@ public final class TimelineView: UIView {
       recalculateEventLayout()
       prepareEventViews()
       allDayView.events = allDayLayoutAttributes.map { $0.descriptor }
-      allDayView.isHidden = allDayLayoutAttributes.count == 0
+        allDayView.isHidden = (allDayLayoutAttributes.count == 0 && style.groupCount <= 1)
       allDayView.scrollToBottom()
       
       setNeedsLayout()
@@ -64,6 +64,19 @@ public final class TimelineView: UIView {
   private lazy var nowLine: CurrentTimeIndicator = CurrentTimeIndicator()
   
   private var allDayViewTopConstraint: NSLayoutConstraint?
+    
+    private lazy var groupNameView: GroupNameView = {
+        let groupNameView = GroupNameView(frame: CGRect.zero)
+        groupNameView.translatesAutoresizingMaskIntoConstraints = false
+        allDayView.addSubview(groupNameView)
+        groupNameView.topAnchor.constraint(equalTo: allDayView.topAnchor, constant: 0).isActive = true
+        groupNameView.leadingAnchor.constraint(equalTo: allDayView.leadingAnchor, constant: 0).isActive = true
+        groupNameView.trailingAnchor.constraint(equalTo: allDayView.trailingAnchor, constant: 0).isActive = true
+        groupNameView.bottomAnchor.constraint(equalTo: allDayView.bottomAnchor, constant: 0).isActive = true
+        return groupNameView
+    }()
+    
+    
   private lazy var allDayView: AllDayView = {
     let allDayView = AllDayView(frame: CGRect.zero)
     
@@ -75,19 +88,21 @@ public final class TimelineView: UIView {
 
     allDayView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 0).isActive = true
     allDayView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 0).isActive = true
-
+    allDayView.heightAnchor.constraint(equalToConstant: 30).isActive = true
     return allDayView
   }()
+    
+    var groupNameViewHeight: CGFloat = 30
   
   var allDayViewHeight: CGFloat {
     return allDayView.bounds.height
   }
 
-  var style = TimelineStyle()
+  public var style = TimelineStyle()
   private var horizontalEventInset: CGFloat = 3
 
   public var fullHeight: CGFloat {
-    return style.verticalInset * 2 + style.verticalDiff * 24
+      return style.verticalInset * 2 + style.verticalDiff * CGFloat(style.dateStyle.count)
   }
 
   public var calendarWidth: CGFloat {
@@ -113,8 +128,13 @@ public final class TimelineView: UIView {
   public var snappingBehaviorType: EventEditingSnappingBehavior.Type = SnapTo15MinuteIntervals.self
   lazy var snappingBehavior: EventEditingSnappingBehavior = snappingBehaviorType.init(calendar)
 
-  private var times: [String] {
-    return is24hClock ? _24hTimes : _12hTimes
+    public var times: [String] {
+        switch style.dateStyle {
+        case let .custom(_,_,timeStrings):
+            return timeStrings
+        default: return
+            is24hClock ? _24hTimes : _12hTimes
+        }
   }
 
   private lazy var _12hTimes: [String] = TimeStringsFactory(calendar).make12hStrings()
@@ -132,7 +152,7 @@ public final class TimelineView: UIView {
   public lazy var tapGestureRecognizer = UITapGestureRecognizer(target: self,
                                                                 action: #selector(tap(_:)))
 
-  private var isToday: Bool {
+  public var isToday: Bool {
     return calendar.isDateInToday(date)
   }
   
@@ -164,6 +184,7 @@ public final class TimelineView: UIView {
     // Add long press gesture recognizer
     addGestureRecognizer(longPressGestureRecognizer)
     addGestureRecognizer(tapGestureRecognizer)
+    groupNameView.backgroundColor = .white
   }
   
   // MARK: - Event Handling
@@ -230,7 +251,8 @@ public final class TimelineView: UIView {
     style = newStyle
     allDayView.updateStyle(style.allDayStyle)
     nowLine.updateStyle(style.timeIndicator)
-    
+    groupNameView.updateStyle(newStyle)
+    allDayView.isHidden = (allDayLayoutAttributes.count == 0 && style.groupCount <= 1)
     switch style.dateStyle {
       case .twelveHour:
         is24hClock = false
@@ -291,6 +313,22 @@ public final class TimelineView: UIView {
     }
     
     let offset = 0.5 - center
+    
+    let groupWidth = style.groupWidth()
+    for index in 0...style.groupCount {
+        let context = UIGraphicsGetCurrentContext()
+        context!.interpolationQuality = .none
+        context?.saveGState()
+        context?.setStrokeColor(style.separatorColor.cgColor)
+        context?.setLineWidth(hourLineHeight)
+        
+        context?.beginPath()
+        let x = style.leadingInset + CGFloat(index) * groupWidth
+        context?.move(to: CGPoint(x: x , y: -30))
+        context?.addLine(to: CGPoint(x: x, y: bounds.maxY - style.verticalInset))
+        context?.strokePath()
+        context?.restoreGState()
+    }
     
     for (hour, time) in times.enumerated() {
         let rightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
@@ -379,7 +417,7 @@ public final class TimelineView: UIView {
     if !isToday {
       nowLine.alpha = 0
     } else {
-		bringSubviewToFront(nowLine)
+        bringSubviewToFront(nowLine)
       nowLine.alpha = 1
       let size = CGSize(width: bounds.size.width, height: 20)
       let rect = CGRect(origin: CGPoint.zero, size: size)
@@ -403,11 +441,12 @@ public final class TimelineView: UIView {
       } else {
         x = attributes.frame.minX
       }
-        
-      eventView.frame = CGRect(x: x,
-                               y: attributes.frame.minY,
-                               width: attributes.frame.width - style.eventGap,
-                               height: attributes.frame.height - style.eventGap)
+        let widthPadding: CGFloat = 2.0;
+        let heightPadding: CGFloat = 2.0;
+      eventView.frame = CGRect(x: x + widthPadding,
+                               y: attributes.frame.minY + heightPadding,
+                               width: attributes.frame.width - style.eventGap - (widthPadding * 2),
+                               height: attributes.frame.height - style.eventGap - (heightPadding * 2))
       eventView.updateWithDescriptor(event: descriptor)
     }
   }
@@ -428,7 +467,20 @@ public final class TimelineView: UIView {
       topConstraint.constant = yValue
       layoutIfNeeded()
     }
+//    if let topConstraint = self.allDayViewTopConstraint {
+//      topConstraint.constant = yValue
+//      layoutIfNeeded()
+//    }
   }
+    public class func overlap(date: ClosedRange<Date>, dates: [ClosedRange<Date>],eventGap: CGFloat) -> Bool {
+        for element in dates {
+            let overlap = date.overlaps(element)
+            if overlap == true {
+                return true
+            }
+        }
+        return false
+    }
 
   private func recalculateEventLayout() {
 
@@ -439,57 +491,66 @@ public final class TimelineView: UIView {
       return start1 < start2
     }
 
-    var groupsOfEvents = [[EventLayoutAttributes]]()
-    var overlappingEvents = [EventLayoutAttributes]()
+    var groupsOfEvents = [[EventLayoutAttributes]]() //整理好一包一包的 重疊時間得event
+//    var overlappingEvents = [EventLayoutAttributes]() //重疊時間得event
+    
+    
 
-    for event in sortedEvents {
-      if overlappingEvents.isEmpty {
-        overlappingEvents.append(event)
-        continue
-      }
-
-      let longestEvent = overlappingEvents.sorted { (attr1, attr2) -> Bool in
-        var period = attr1.descriptor.datePeriod
-        let period1 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
-
-        period = attr2.descriptor.datePeriod
-        let period2 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
-
-        return period1 > period2
+    forLoop: for event in sortedEvents {
+        if event.descriptor.isAllDay {
+            continue
         }
-        .first!
+        let eventGroup = event.descriptor.group
+        if groupsOfEvents.isEmpty {
+            groupsOfEvents.append([event])
+            continue forLoop
+        }
+        subForLoop: for index in 0..<groupsOfEvents.count {
+            if groupsOfEvents[index].first?.descriptor.group != eventGroup {
+                continue subForLoop
+            }
+            let longestEvent = groupsOfEvents[index].sorted { (attr1, attr2) -> Bool in
+            var period = attr1.descriptor.datePeriod
+            let period1 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
 
-      if style.eventsWillOverlap {
-        guard let earliestEvent = overlappingEvents.first?.descriptor.startDate else { continue }
-        let dateInterval = getDateInterval(date: earliestEvent)
-        if event.descriptor.datePeriod.contains(dateInterval.lowerBound) {
-          overlappingEvents.append(event)
-          continue
+            period = attr2.descriptor.datePeriod
+            let period2 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
+
+            return period1 > period2
+            }
+            .first!
+            
+            let overlap = TimelineView.overlap(date: longestEvent.descriptor.datePeriod, dates: [event.descriptor.datePeriod], eventGap: style.eventGap)
+            if overlap {
+                groupsOfEvents[index].append(event)
+                continue forLoop
+            }
         }
-      } else {
-        let lastEvent = overlappingEvents.last!
-        if (longestEvent.descriptor.datePeriod.overlaps(event.descriptor.datePeriod) && (longestEvent.descriptor.endDate != event.descriptor.startDate || style.eventGap <= 0.0)) ||
-          (lastEvent.descriptor.datePeriod.overlaps(event.descriptor.datePeriod) && (lastEvent.descriptor.endDate != event.descriptor.startDate || style.eventGap <= 0.0)) {
-          overlappingEvents.append(event)
-          continue
-        }
-      }
-      groupsOfEvents.append(overlappingEvents)
-      overlappingEvents = [event]
+        groupsOfEvents.append([event])
     }
 
-    groupsOfEvents.append(overlappingEvents)
-    overlappingEvents.removeAll()
-
+    let groupWidth: CGFloat = style.groupWidth()
     for overlappingEvents in groupsOfEvents {
       let totalCount = CGFloat(overlappingEvents.count)
       for (index, event) in overlappingEvents.enumerated() {
         let startY = dateToY(event.descriptor.datePeriod.lowerBound)
         let endY = dateToY(event.descriptor.datePeriod.upperBound)
+        print("⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️")
+        print("group = \(event.descriptor.group)")
+        print("leadingInset = \(style.leadingInset)")
+
         let floatIndex = CGFloat(index)
-        let x = style.leadingInset + floatIndex / totalCount * calendarWidth
-        let equalWidth = calendarWidth / totalCount
+        print("floatIndex = \(floatIndex)")
+        print("groupWidth = \(groupWidth)")
+        let groupX: CGFloat = CGFloat(event.descriptor.group) * groupWidth
+        print("groupX = \(groupX)")
+        let x = groupX + style.leadingInset + floatIndex / totalCount * groupWidth
+        print("x = \(x)")
+        let equalWidth = calendarWidth / totalCount / CGFloat(style.groupCount)
+        print("equalWidth \(equalWidth)")
         event.frame = CGRect(x: x, y: startY, width: equalWidth, height: endY - startY)
+        print("event.frame \(event.frame)")
+        print("⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️\n\n")
       }
     }
   }
@@ -525,10 +586,10 @@ public final class TimelineView: UIView {
       // Event starting the previous day
       dayOffset -= 1
     }
-    let fullTimelineHeight = 24 * style.verticalDiff
+      let fullTimelineHeight = CGFloat(style.dateStyle.count) * style.verticalDiff
     let hour = component(component: .hour, from: date)
     let minute = component(component: .minute, from: date)
-    let hourY = CGFloat(hour) * style.verticalDiff + style.verticalInset
+      let hourY = CGFloat(style.dateStyle.real24Hour(original24Hour: hour)) * style.verticalDiff + style.verticalInset
     let minuteY = CGFloat(minute) * style.verticalDiff / 60
     return hourY + minuteY + fullTimelineHeight * dayOffset
   }
@@ -556,7 +617,7 @@ public final class TimelineView: UIView {
     return newDate!
   }
 
-  private func component(component: Calendar.Component, from date: Date) -> Int {
+  public func component(component: Calendar.Component, from date: Date) -> Int {
     return calendar.component(component, from: date)
   }
   

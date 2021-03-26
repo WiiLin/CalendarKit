@@ -2,4 +2,5 @@ use_frameworks!
 
 target "CalendarApp" do
 	pod 'CalendarKit', path: '../'
+  pod 'LookinServer'
 end
