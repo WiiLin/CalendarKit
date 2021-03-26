@@ -35,6 +35,43 @@ class CustomCalendarExampleController: DayViewController {
                "Mikpoli MB310",
                "Craig Federighi"],
               
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+             
+             ["Software Development Lecture",
+              "Mikpoli MB310",
+              "Craig Federighi"],
+              
   ]
   
   var generatedEvents = [EventDescriptor]()
@@ -46,7 +83,16 @@ class CustomCalendarExampleController: DayViewController {
                 UIColor.red,
                 UIColor.brown,
                 UIColor.cyan,
+                UIColor.orange,
+                UIColor.blue,
+                UIColor.yellow,
+                UIColor.green,
+                UIColor.red,
+                UIColor.brown,
+                UIColor.cyan,
                 UIColor.orange]
+  
+  var groups = ["設計師1","設計師2","設計師3","設計師4","設計師5","設計師6","設計師7","設計師8","設計師9","設計師10","設計師11","設計師12","設計師13","設計師14"]
 
   private lazy var rangeFormatter: DateIntervalFormatter = {
     let fmt = DateIntervalFormatter()
@@ -70,7 +116,7 @@ class CustomCalendarExampleController: DayViewController {
     dayView.autoScrollToFirstEvent = true
     reloadData()
     var timeLimeStyle = TimelineStyle()
-    timeLimeStyle.groupCount = colors.count
+    timeLimeStyle.group = groups
     dayView.timelinePagerView.updateStyle(timeLimeStyle)
   }
   
@@ -103,7 +149,7 @@ class CustomCalendarExampleController: DayViewController {
       info.append(rangeFormatter.string(from: event.startDate, to: event.endDate))
       event.text = info.reduce("", {$0 + $1 + "\n"})
       event.color = colors[radomInt]
-      event.isAllDay = Int(arc4random_uniform(2)) % 2 == 0
+//      event.isAllDay = Int(arc4random_uniform(2)) % 2 == 0
       event.lineBreakMode = .byTruncatingTail
       event.group = radomInt
       

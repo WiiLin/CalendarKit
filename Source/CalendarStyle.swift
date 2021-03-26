@@ -71,7 +71,10 @@ public struct TimelineStyle {
   public var verticalInset: CGFloat = 10
   public var leadingInset: CGFloat = 53
   public var eventGap: CGFloat = 0
-  public var groupCount: Int = 1
+  public var group:[String] = [""]
+    var groupCount: Int {
+        return group.count
+    }
     func contentWidth(superView: UIView) -> CGFloat {
         if groupCount <= 4 {
             return superView.bounds.width

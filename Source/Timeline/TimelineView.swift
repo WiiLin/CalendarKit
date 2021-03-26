@@ -292,6 +292,22 @@ public final class TimelineView: UIView {
     
     let offset = 0.5 - center
     
+    let groupWidth = style.groupWidth(timeLineView: self)
+    for index in 1...style.groupCount {
+        let context = UIGraphicsGetCurrentContext()
+        context!.interpolationQuality = .none
+        context?.saveGState()
+        context?.setStrokeColor(style.separatorColor.cgColor)
+        context?.setLineWidth(hourLineHeight)
+        
+        context?.beginPath()
+        let x = style.leadingInset + CGFloat(index) * groupWidth
+        context?.move(to: CGPoint(x: x , y: style.verticalInset))
+        context?.addLine(to: CGPoint(x: x, y: bounds.maxY - style.verticalInset))
+        context?.strokePath()
+        context?.restoreGState()
+    }
+    
     for (hour, time) in times.enumerated() {
         let rightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
         
