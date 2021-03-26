@@ -439,57 +439,67 @@ public final class TimelineView: UIView {
       return start1 < start2
     }
 
-    var groupsOfEvents = [[EventLayoutAttributes]]()
-    var overlappingEvents = [EventLayoutAttributes]()
+    var groupsOfEvents = [[EventLayoutAttributes]]() //整理好一包一包的 重疊時間得event
+//    var overlappingEvents = [EventLayoutAttributes]() //重疊時間得event
+    
+    
 
-    for event in sortedEvents {
-      if overlappingEvents.isEmpty {
-        overlappingEvents.append(event)
-        continue
-      }
-
-      let longestEvent = overlappingEvents.sorted { (attr1, attr2) -> Bool in
-        var period = attr1.descriptor.datePeriod
-        let period1 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
-
-        period = attr2.descriptor.datePeriod
-        let period2 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
-
-        return period1 > period2
+    forLoop: for event in sortedEvents {
+        if event.descriptor.isAllDay {
+            continue
         }
-        .first!
+        let eventGroup = event.descriptor.group
+        if groupsOfEvents.isEmpty {
+            groupsOfEvents.append([event])
+            continue forLoop
+        }
+        subForLoop: for index in 0..<groupsOfEvents.count {
+            if groupsOfEvents[index].first?.descriptor.group != eventGroup {
+                continue subForLoop
+            }
+            let longestEvent = groupsOfEvents[index].sorted { (attr1, attr2) -> Bool in
+            var period = attr1.descriptor.datePeriod
+            let period1 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
 
-      if style.eventsWillOverlap {
-        guard let earliestEvent = overlappingEvents.first?.descriptor.startDate else { continue }
-        let dateInterval = getDateInterval(date: earliestEvent)
-        if event.descriptor.datePeriod.contains(dateInterval.lowerBound) {
-          overlappingEvents.append(event)
-          continue
+            period = attr2.descriptor.datePeriod
+            let period2 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
+
+            return period1 > period2
+            }
+            .first!
+            
+            let overlap = (longestEvent.descriptor.datePeriod.overlaps(event.descriptor.datePeriod) &&
+                            (longestEvent.descriptor.endDate != event.descriptor.startDate || style.eventGap <= 0.0))
+            if overlap {
+                groupsOfEvents[index].append(event)
+                continue forLoop
+            }
         }
-      } else {
-        let lastEvent = overlappingEvents.last!
-        if (longestEvent.descriptor.datePeriod.overlaps(event.descriptor.datePeriod) && (longestEvent.descriptor.endDate != event.descriptor.startDate || style.eventGap <= 0.0)) ||
-          (lastEvent.descriptor.datePeriod.overlaps(event.descriptor.datePeriod) && (lastEvent.descriptor.endDate != event.descriptor.startDate || style.eventGap <= 0.0)) {
-          overlappingEvents.append(event)
-          continue
-        }
-      }
-      groupsOfEvents.append(overlappingEvents)
-      overlappingEvents = [event]
+        groupsOfEvents.append([event])
     }
-
-    groupsOfEvents.append(overlappingEvents)
-    overlappingEvents.removeAll()
 
     for overlappingEvents in groupsOfEvents {
       let totalCount = CGFloat(overlappingEvents.count)
       for (index, event) in overlappingEvents.enumerated() {
         let startY = dateToY(event.descriptor.datePeriod.lowerBound)
         let endY = dateToY(event.descriptor.datePeriod.upperBound)
+        print("⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️")
+        print("group = \(event.descriptor.group)")
+        print("leadingInset = \(style.leadingInset)")
+
         let floatIndex = CGFloat(index)
-        let x = style.leadingInset + floatIndex / totalCount * calendarWidth
-        let equalWidth = calendarWidth / totalCount
+        print("floatIndex = \(floatIndex)")
+        let groupWidth: CGFloat = calendarWidth / CGFloat(style.groupCount)
+        print("groupWidth = \(groupWidth)")
+        let groupX: CGFloat = CGFloat(event.descriptor.group) * groupWidth
+        print("groupX = \(groupX)")
+        let x = groupX + style.leadingInset + floatIndex / totalCount * groupWidth
+        print("x = \(x)")
+        let equalWidth = calendarWidth / totalCount / CGFloat(style.groupCount)
+        print("equalWidth \(equalWidth)")
         event.frame = CGRect(x: x, y: startY, width: equalWidth, height: endY - startY)
+        print("event.frame \(event.frame)")
+        print("⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️\n\n")
       }
     }
   }
