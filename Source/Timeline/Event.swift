@@ -1,6 +1,8 @@
 import UIKit
 
 public final class Event: EventDescriptor {
+ public var group: Int = 0
+    
   public var startDate = Date()
   public var endDate = Date()
   public var isAllDay = false

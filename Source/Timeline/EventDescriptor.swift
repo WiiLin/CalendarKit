@@ -15,4 +15,6 @@ public protocol EventDescriptor: AnyObject {
   var editedEvent: EventDescriptor? {get set}
   func makeEditable() -> Self
   func commitEditing()
+  var group: Int {get}
+    
 }
