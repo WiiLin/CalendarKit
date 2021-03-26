@@ -478,6 +478,7 @@ public final class TimelineView: UIView {
         groupsOfEvents.append([event])
     }
 
+    let groupWidth: CGFloat = style.groupWidth(timeLineView: self)
     for overlappingEvents in groupsOfEvents {
       let totalCount = CGFloat(overlappingEvents.count)
       for (index, event) in overlappingEvents.enumerated() {
@@ -489,7 +490,6 @@ public final class TimelineView: UIView {
 
         let floatIndex = CGFloat(index)
         print("floatIndex = \(floatIndex)")
-        let groupWidth: CGFloat = calendarWidth / CGFloat(style.groupCount)
         print("groupWidth = \(groupWidth)")
         let groupX: CGFloat = CGFloat(event.descriptor.group) * groupWidth
         print("groupX = \(groupX)")
