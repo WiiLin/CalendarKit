@@ -16,7 +16,7 @@ public final class TimelineContainer: UIScrollView {
     super.layoutSubviews()
     timeline.frame = CGRect(x: 0, y: 0, width: timeline.style.contentWidth(superView: self), height: timeline.fullHeight)
     timeline.offsetAllDayView(by: contentOffset.y)
-    
+    self.bounces = false
     
     //adjust the scroll insets
     let allDayViewHeight = timeline.allDayViewHeight

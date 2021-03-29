@@ -148,8 +148,8 @@ class CustomCalendarExampleController: DayViewController {
       print(timezone)
       info.append(rangeFormatter.string(from: event.startDate, to: event.endDate))
       event.text = info.reduce("", {$0 + $1 + "\n"})
-      event.color = colors[radomInt]
-//      event.isAllDay = Int(arc4random_uniform(2)) % 2 == 0
+      event.color = .lightGray
+      event.isAllDay = Int(arc4random_uniform(2)) % 2 == 0
       event.lineBreakMode = .byTruncatingTail
       event.group = radomInt
       
@@ -240,7 +240,7 @@ class CustomCalendarExampleController: DayViewController {
 
     info.append(rangeFormatter.string(from: event.startDate, to: event.endDate))
     event.text = info.reduce("", {$0 + $1 + "\n"})
-    event.color = colors[radomInt]
+    event.color = .lightGray
     event.editedEvent = event
     event.group = radomInt
     // Event styles are updated independently from CalendarStyle

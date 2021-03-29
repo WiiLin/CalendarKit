@@ -42,7 +42,7 @@ public final class TimelineView: UIView {
       recalculateEventLayout()
       prepareEventViews()
       allDayView.events = allDayLayoutAttributes.map { $0.descriptor }
-      allDayView.isHidden = allDayLayoutAttributes.count == 0
+        allDayView.isHidden = (allDayLayoutAttributes.count == 0 && style.groupCount <= 1)
       allDayView.scrollToBottom()
       
       setNeedsLayout()
@@ -64,6 +64,19 @@ public final class TimelineView: UIView {
   private lazy var nowLine: CurrentTimeIndicator = CurrentTimeIndicator()
   
   private var allDayViewTopConstraint: NSLayoutConstraint?
+    
+    private lazy var groupNameView: GroupNameView = {
+        let groupNameView = GroupNameView(frame: CGRect.zero)
+        groupNameView.translatesAutoresizingMaskIntoConstraints = false
+        allDayView.addSubview(groupNameView)
+        groupNameView.topAnchor.constraint(equalTo: allDayView.topAnchor, constant: 0).isActive = true
+        groupNameView.leadingAnchor.constraint(equalTo: allDayView.leadingAnchor, constant: 0).isActive = true
+        groupNameView.trailingAnchor.constraint(equalTo: allDayView.trailingAnchor, constant: 0).isActive = true
+        groupNameView.bottomAnchor.constraint(equalTo: allDayView.bottomAnchor, constant: 0).isActive = true
+        return groupNameView
+    }()
+    
+    
   private lazy var allDayView: AllDayView = {
     let allDayView = AllDayView(frame: CGRect.zero)
     
@@ -75,9 +88,11 @@ public final class TimelineView: UIView {
 
     allDayView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 0).isActive = true
     allDayView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 0).isActive = true
-
+    allDayView.heightAnchor.constraint(equalToConstant: 30).isActive = true
     return allDayView
   }()
+    
+    var groupNameViewHeight: CGFloat = 30
   
   var allDayViewHeight: CGFloat {
     return allDayView.bounds.height
@@ -164,6 +179,7 @@ public final class TimelineView: UIView {
     // Add long press gesture recognizer
     addGestureRecognizer(longPressGestureRecognizer)
     addGestureRecognizer(tapGestureRecognizer)
+    groupNameView.backgroundColor = .white
   }
   
   // MARK: - Event Handling
@@ -230,7 +246,8 @@ public final class TimelineView: UIView {
     style = newStyle
     allDayView.updateStyle(style.allDayStyle)
     nowLine.updateStyle(style.timeIndicator)
-    
+    groupNameView.updateStyle(newStyle)
+    allDayView.isHidden = (allDayLayoutAttributes.count == 0 && style.groupCount <= 1)
     switch style.dateStyle {
       case .twelveHour:
         is24hClock = false
@@ -302,7 +319,7 @@ public final class TimelineView: UIView {
         
         context?.beginPath()
         let x = style.leadingInset + CGFloat(index) * groupWidth
-        context?.move(to: CGPoint(x: x , y: style.verticalInset))
+        context?.move(to: CGPoint(x: x , y: -30))
         context?.addLine(to: CGPoint(x: x, y: bounds.maxY - style.verticalInset))
         context?.strokePath()
         context?.restoreGState()
@@ -444,6 +461,10 @@ public final class TimelineView: UIView {
       topConstraint.constant = yValue
       layoutIfNeeded()
     }
+//    if let topConstraint = self.allDayViewTopConstraint {
+//      topConstraint.constant = yValue
+//      layoutIfNeeded()
+//    }
   }
 
   private func recalculateEventLayout() {

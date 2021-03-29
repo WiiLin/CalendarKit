@@ -83,7 +83,7 @@ public struct TimelineStyle {
         }
     }
     
-    func groupWidth(timeLineView: TimelineView) -> CGFloat {
+    func groupWidth(timeLineView: UIView) -> CGFloat {
         if groupCount <= 4 {
             return (timeLineView.bounds.width - leadingInset) / 4
         } else {
