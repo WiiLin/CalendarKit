@@ -13,7 +13,7 @@ class GroupNameView: UIStackView {
     override func draw(_ rect: CGRect) {
         let groupWidth = style.groupWidth()
         let hourLineHeight = 1 / UIScreen.main.scale
-        for index in 1...style.groupCount {
+        for index in 0...style.groupCount {
             let context = UIGraphicsGetCurrentContext()
             context!.interpolationQuality = .none
             context?.saveGState()

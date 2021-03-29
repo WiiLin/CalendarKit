@@ -310,7 +310,7 @@ public final class TimelineView: UIView {
     let offset = 0.5 - center
     
     let groupWidth = style.groupWidth()
-    for index in 1...style.groupCount {
+    for index in 0...style.groupCount {
         let context = UIGraphicsGetCurrentContext()
         context!.interpolationQuality = .none
         context?.saveGState()
