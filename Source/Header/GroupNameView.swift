@@ -11,7 +11,7 @@ class GroupNameView: UIStackView {
     
     var style = TimelineStyle()
     override func draw(_ rect: CGRect) {
-        let groupWidth = style.groupWidth(timeLineView: superview!)
+        let groupWidth = style.groupWidth()
         let hourLineHeight = 1 / UIScreen.main.scale
         for index in 1...style.groupCount {
             let context = UIGraphicsGetCurrentContext()
@@ -33,7 +33,7 @@ class GroupNameView: UIStackView {
     func updateStyle(_ newStyle: TimelineStyle) {
         style = newStyle
         removeAllArrangedSubviews()
-        let groupWidth = newStyle.groupWidth(timeLineView: superview!)
+        let groupWidth = newStyle.groupWidth()
         let spaceView = UIView.init(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: self.bounds.height))
         
         spaceView.translatesAutoresizingMaskIntoConstraints = false

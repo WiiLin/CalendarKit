@@ -309,7 +309,7 @@ public final class TimelineView: UIView {
     
     let offset = 0.5 - center
     
-    let groupWidth = style.groupWidth(timeLineView: self)
+    let groupWidth = style.groupWidth()
     for index in 1...style.groupCount {
         let context = UIGraphicsGetCurrentContext()
         context!.interpolationQuality = .none
@@ -515,7 +515,7 @@ public final class TimelineView: UIView {
         groupsOfEvents.append([event])
     }
 
-    let groupWidth: CGFloat = style.groupWidth(timeLineView: self)
+    let groupWidth: CGFloat = style.groupWidth()
     for overlappingEvents in groupsOfEvents {
       let totalCount = CGFloat(overlappingEvents.count)
       for (index, event) in overlappingEvents.enumerated() {

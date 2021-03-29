@@ -75,17 +75,17 @@ public struct TimelineStyle {
     var groupCount: Int {
         return group.count
     }
-    func contentWidth(superView: UIView) -> CGFloat {
+    func contentWidth() -> CGFloat {
         if groupCount <= 4 {
-            return superView.bounds.width
+            return UIScreen.main.bounds.width
         } else {
             return leadingInset + (90.0 * CGFloat(groupCount))
         }
     }
     
-    func groupWidth(timeLineView: UIView) -> CGFloat {
+    func groupWidth() -> CGFloat {
         if groupCount <= 4 {
-            return (timeLineView.bounds.width - leadingInset) / 4
+            return (UIScreen.main.bounds.width - leadingInset) / CGFloat(groupCount)
         } else {
             return 90
         }
