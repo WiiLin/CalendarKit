@@ -7,48 +7,43 @@
 
 import UIKit
 
-class GroupNameView: UIStackView {
+class GroupNameView: UIView {
     
     var style = TimelineStyle()
     override func draw(_ rect: CGRect) {
-        let groupWidth = style.groupWidth()
-        let hourLineHeight = 1 / UIScreen.main.scale
-        for index in 0...style.groupCount {
-            let context = UIGraphicsGetCurrentContext()
-            context!.interpolationQuality = .none
-            context?.saveGState()
-            context?.setStrokeColor(style.separatorColor.cgColor)
-            context?.setLineWidth(hourLineHeight)
-            
-            context?.beginPath()
-            let x = style.leadingInset + CGFloat(index) * groupWidth
-            context?.move(to: CGPoint(x: x , y: 0))
-            context?.addLine(to: CGPoint(x: x, y: bounds.maxY ))
-            context?.strokePath()
-            context?.restoreGState()
-        }
+//        let groupWidth = style.groupWidth()
+//        let hourLineHeight = 1 / UIScreen.main.scale
+//        for index in 0...style.groupCount {
+//            let context = UIGraphicsGetCurrentContext()
+//            context!.interpolationQuality = .none
+//            context?.saveGState()
+//            context?.setStrokeColor(UIColor.red.cgColor)
+//            context?.setLineWidth(hourLineHeight)
+//            
+//            context?.beginPath()
+//            let x = style.leadingInset + CGFloat(index) * groupWidth
+//            print("\(x)")
+//            context?.move(to: CGPoint(x: x , y: 0))
+//            context?.addLine(to: CGPoint(x: x, y: 30 ))
+//            context?.strokePath()
+//            context?.restoreGState()
+//        }
     }
     
     
     func updateStyle(_ newStyle: TimelineStyle) {
         style = newStyle
-        removeAllArrangedSubviews()
+        self.subviews.forEach { $0.removeFromSuperview() }
         let groupWidth = newStyle.groupWidth()
-        let spaceView = UIView.init(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: self.bounds.height))
-        
-        spaceView.translatesAutoresizingMaskIntoConstraints = false
-        addArrangedSubview(spaceView)
-        spaceView.widthAnchor.constraint(equalToConstant: newStyle.leadingInset).isActive = true
+        let spaceView = UIView.init(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: 30))
+        addSubview(spaceView)
       
-       
-        for groupName in newStyle.group {
-            let label: UILabel = UILabel.init(frame: CGRect(x: 0, y: 0, width: groupWidth, height: self.bounds.height))
+        for index in 0..<newStyle.group.count {
+            let label: UILabel = UILabel.init(frame: CGRect(x: CGFloat(index) * groupWidth + newStyle.leadingInset, y: 0, width: groupWidth, height: 30))
             label.textAlignment = .center
             label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-            label.text = groupName
-            label.translatesAutoresizingMaskIntoConstraints = false
-            addArrangedSubview(label)
-            label.widthAnchor.constraint(equalToConstant: groupWidth).isActive = true
+            label.text = newStyle.group[index]
+            addSubview(label)
         }
         setNeedsDisplay()
     }
