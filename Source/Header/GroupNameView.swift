@@ -19,7 +19,7 @@ class GroupNameView: UIView {
 //            context?.saveGState()
 //            context?.setStrokeColor(UIColor.red.cgColor)
 //            context?.setLineWidth(hourLineHeight)
-//            
+//
 //            context?.beginPath()
 //            let x = style.leadingInset + CGFloat(index) * groupWidth
 //            print("\(x)")
@@ -40,6 +40,8 @@ class GroupNameView: UIView {
       
         for index in 0..<newStyle.group.count {
             let label: UILabel = UILabel.init(frame: CGRect(x: CGFloat(index) * groupWidth + newStyle.leadingInset, y: 0, width: groupWidth, height: 30))
+            label.numberOfLines = 0
+            label.minimumScaleFactor = 0.5
             label.textAlignment = .center
             label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
             label.text = newStyle.group[index]

@@ -13,6 +13,8 @@ open class EventView: UIView {
     view.isUserInteractionEnabled = false
     view.backgroundColor = .clear
     view.isScrollEnabled = false
+    view.textContainerInset.top = 1
+    view.textContainerInset.left = 0
     return view
   }()
 
