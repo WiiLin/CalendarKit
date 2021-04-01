@@ -412,7 +412,7 @@ public final class TimelineView: UIView {
     if !isToday {
       nowLine.alpha = 0
     } else {
-		bringSubviewToFront(nowLine)
+        bringSubviewToFront(nowLine)
       nowLine.alpha = 1
       let size = CGSize(width: bounds.size.width, height: 20)
       let rect = CGRect(origin: CGPoint.zero, size: size)
@@ -466,6 +466,15 @@ public final class TimelineView: UIView {
 //      layoutIfNeeded()
 //    }
   }
+    public class func overlap(date: ClosedRange<Date>, dates: [ClosedRange<Date>],eventGap: CGFloat) -> Bool {
+        for element in dates {
+            let overlap = (date.overlaps(element) && (date.upperBound != element.lowerBound || eventGap <= 0.0))
+            if overlap == true {
+                return true
+            }
+        }
+        return false
+    }
 
   private func recalculateEventLayout() {
 
@@ -505,8 +514,7 @@ public final class TimelineView: UIView {
             }
             .first!
             
-            let overlap = (longestEvent.descriptor.datePeriod.overlaps(event.descriptor.datePeriod) &&
-                            (longestEvent.descriptor.endDate != event.descriptor.startDate || style.eventGap <= 0.0))
+            let overlap = TimelineView.overlap(date: longestEvent.descriptor.datePeriod, dates: [event.descriptor.datePeriod], eventGap: style.eventGap)
             if overlap {
                 groupsOfEvents[index].append(event)
                 continue forLoop

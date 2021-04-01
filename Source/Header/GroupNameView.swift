@@ -41,10 +41,25 @@ class GroupNameView: UIView {
         for index in 0..<newStyle.group.count {
             let label: UILabel = UILabel.init(frame: CGRect(x: CGFloat(index) * groupWidth + newStyle.leadingInset, y: 0, width: groupWidth, height: 30))
             label.numberOfLines = 0
+            label.adjustsFontSizeToFitWidth = true
             label.minimumScaleFactor = 0.5
             label.textAlignment = .center
             label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-            label.text = newStyle.group[index]
+            let text = newStyle.group[index]
+            let texts = text.split(separator: "\n")
+            if texts.count == 2 {
+                let attribute = NSMutableAttributedString.init(string: text)
+                let ranges = attribute.string.ranges(of: texts.last!)
+                if let first = ranges.first {
+                    let nsRange = NSRange(first, in: attribute.string)
+                    attribute.addAttributes([.font: UIFont.systemFont(ofSize: 11, weight: .regular)], range: nsRange)
+                    label.attributedText = attribute
+                } else {
+                    label.text = text
+                }
+            } else {
+                label.text = text
+            }
             addSubview(label)
         }
         setNeedsDisplay()
@@ -61,5 +76,20 @@ extension UIStackView {
             return removedSubviews + [subview]
         }
         return removedSubviews
+    }
+}
+
+extension StringProtocol {
+    func ranges<S: StringProtocol>(of string: S, options: String.CompareOptions = []) -> [Range<Index>] {
+        var result: [Range<Index>] = []
+        var startIndex = self.startIndex
+        while startIndex < endIndex,
+            let range = self[startIndex...]
+            .range(of: string, options: options) {
+            result.append(range)
+            startIndex = range.lowerBound < range.upperBound ? range.upperBound :
+                index(range.lowerBound, offsetBy: 1, limitedBy: endIndex) ?? endIndex
+        }
+        return result
     }
 }

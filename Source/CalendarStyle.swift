@@ -79,7 +79,7 @@ var groupCount: Int {
         if groupCount <= 4 {
             return UIScreen.main.bounds.width
         } else {
-            return leadingInset + (90.0 * CGFloat(groupCount))
+            return leadingInset + (110.0 * CGFloat(groupCount))
         }
     }
     
@@ -87,7 +87,7 @@ var groupCount: Int {
         if groupCount <= 4 {
             return (UIScreen.main.bounds.width - leadingInset) / CGFloat(groupCount)
         } else {
-            return 90
+            return 110
         }
     }
   public init() {}
