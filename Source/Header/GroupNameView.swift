@@ -8,7 +8,6 @@
 import UIKit
 
 class GroupNameView: UIView {
-    
     var style = TimelineStyle()
     override func draw(_ rect: CGRect) {
 //        let groupWidth = style.groupWidth()
@@ -30,16 +29,15 @@ class GroupNameView: UIView {
 //        }
     }
     
-    
     func updateStyle(_ newStyle: TimelineStyle) {
         style = newStyle
-        self.subviews.forEach { $0.removeFromSuperview() }
+        subviews.forEach { $0.removeFromSuperview() }
         let groupWidth = newStyle.groupWidth()
-        let spaceView = UIView.init(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: 30))
+        let spaceView = UIView(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: 30))
         addSubview(spaceView)
       
-        for index in 0..<newStyle.group.count {
-            let label: UILabel = UILabel.init(frame: CGRect(x: CGFloat(index) * groupWidth + newStyle.leadingInset, y: 0, width: groupWidth, height: 30))
+        for index in 0 ..< newStyle.group.count {
+            let label = UILabel(frame: CGRect(x: CGFloat(index) * groupWidth + newStyle.leadingInset, y: 0, width: groupWidth, height: 30))
             label.numberOfLines = 0
             label.adjustsFontSizeToFitWidth = true
             label.minimumScaleFactor = 0.5
@@ -48,7 +46,7 @@ class GroupNameView: UIView {
             let text = newStyle.group[index]
             let texts = text.split(separator: "\n")
             if texts.count == 2 {
-                let attribute = NSMutableAttributedString.init(string: text)
+                let attribute = NSMutableAttributedString(string: text)
                 let ranges = attribute.string.ranges(of: texts.last!)
                 if let first = ranges.first {
                     let nsRange = NSRange(first, in: attribute.string)
@@ -64,12 +62,11 @@ class GroupNameView: UIView {
         }
         setNeedsDisplay()
     }
-
 }
 
 extension UIStackView {
     @discardableResult func removeAllArrangedSubviews() -> [UIView] {
-        let removedSubviews = arrangedSubviews.reduce([]) { (removedSubviews, subview) -> [UIView] in
+        let removedSubviews = arrangedSubviews.reduce([]) { removedSubviews, subview -> [UIView] in
             self.removeArrangedSubview(subview)
             NSLayoutConstraint.deactivate(subview.constraints)
             subview.removeFromSuperview()
@@ -84,8 +81,9 @@ extension StringProtocol {
         var result: [Range<Index>] = []
         var startIndex = self.startIndex
         while startIndex < endIndex,
-            let range = self[startIndex...]
-            .range(of: string, options: options) {
+              let range = self[startIndex...]
+              .range(of: string, options: options)
+        {
             result.append(range)
             startIndex = range.lowerBound < range.upperBound ? range.upperBound :
                 index(range.lowerBound, offsetBy: 1, limitedBy: endIndex) ?? endIndex

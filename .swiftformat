@@ -1,0 +1,5 @@
+# https://github.com/nicklockwood/SwiftFormat/blob/master/Rules.md#unusedarguments
+--disable unusedArguments
+--trimwhitespace nonblank-lines
+--exclude Pods
+--exclude TreviKit/TreviKit/Common/L10n.swift

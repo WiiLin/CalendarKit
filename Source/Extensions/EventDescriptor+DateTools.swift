@@ -6,7 +6,7 @@ import Foundation
  without exposing it to the client.
  */
 extension EventDescriptor {
-  var datePeriod: ClosedRange<Date> {
-    return startDate ... endDate
-  }
+    var datePeriod: ClosedRange<Date> {
+        return startDate ... endDate
+    }
 }
