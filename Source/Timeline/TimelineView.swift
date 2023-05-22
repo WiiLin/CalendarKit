@@ -404,6 +404,7 @@ public final class TimelineView: UIView {
 
     override public func layoutSubviews() {
         super.layoutSubviews()
+        if (superview as? TimelineContainer)?.isDragging ?? false { return }
         recalculateEventLayout()
         layoutEvents()
         layoutNowLine()
