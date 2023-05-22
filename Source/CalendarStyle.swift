@@ -2,13 +2,13 @@ import Foundation
 import UIKit
 
 public enum DateStyle {
-    ///Times should be shown in the 12 hour format
+    /// Times should be shown in the 12 hour format
     case twelveHour
-    
-    ///Times should be shown in the 24 hour format
+
+    /// Times should be shown in the 24 hour format
     case twentyFourHour
-    
-    ///Times should be shown according to the user's system preference.
+
+    /// Times should be shown according to the user's system preference.
     case system
 }
 
@@ -38,7 +38,7 @@ public struct DaySelectorStyle {
     public var todayInactiveTextColor = SystemColors.systemRed
     public var todayActiveTextColor = UIColor.white
     public var todayActiveBackgroundColor = SystemColors.systemRed
-    
+
     public var font = UIFont.systemFont(ofSize: 18)
     public var todayFont = UIFont.boldSystemFont(ofSize: 18)
 
@@ -65,7 +65,7 @@ public struct TimelineStyle {
     public var separatorColor = SystemColors.systemSeparator
     public var backgroundColor = SystemColors.systemBackground
     public var font = UIFont.boldSystemFont(ofSize: 11)
-    public var dateStyle : DateStyle = .system
+    public var dateStyle: DateStyle = .system
     public var eventsWillOverlap: Bool = false
     public var minimumEventDurationInMinutesWhileEditing: Int = 30
     public var splitMinuteInterval: Int = 15
@@ -79,7 +79,7 @@ public struct TimelineStyle {
 public struct CurrentTimeIndicatorStyle {
     public var color = SystemColors.systemRed
     public var font = UIFont.systemFont(ofSize: 11)
-    public var dateStyle : DateStyle = .system
+    public var dateStyle: DateStyle = .system
     public init() {}
 }
 

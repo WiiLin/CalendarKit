@@ -38,14 +38,14 @@ public final class DayHeaderView: UIView, DaySelectorDelegate, DayViewStateUpdat
         self.calendar = calendar
         let symbols = DaySymbolsView(calendar: calendar)
         let swipeLabel = SwipeLabelView(calendar: calendar)
-        self.swipeLabelView = swipeLabel
-        self.daySymbolsView = symbols
+        swipeLabelView = swipeLabel
+        daySymbolsView = symbols
         super.init(frame: .zero)
         configure()
     }
 
     @available(*, unavailable)
-    required public init?(coder aDecoder: NSCoder) {
+    public required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -97,7 +97,7 @@ public final class DayHeaderView: UIView, DaySelectorDelegate, DayViewStateUpdat
         style = newStyle
         daySymbolsView.updateStyle(style.daySymbols)
         swipeLabelView.updateStyle(style.swipeLabel)
-        (pagingViewController.viewControllers as? [DaySelectorController])?.forEach{$0.updateStyle(newStyle.daySelector)}
+        (pagingViewController.viewControllers as? [DaySelectorController])?.forEach { $0.updateStyle(newStyle.daySelector) }
         backgroundColor = style.backgroundColor
         separator.backgroundColor = style.separatorColor
     }
@@ -119,7 +119,7 @@ public final class DayHeaderView: UIView, DaySelectorDelegate, DayViewStateUpdat
     public func transitionToHorizontalSizeClass(_ sizeClass: UIUserInterfaceSizeClass) {
         currentSizeClass = sizeClass
         daySymbolsView.isHidden = sizeClass == .regular
-        (pagingViewController.children as? [DaySelectorController])?.forEach{$0.transitionToHorizontalSizeClass(sizeClass)}
+        (pagingViewController.children as? [DaySelectorController])?.forEach { $0.transitionToHorizontalSizeClass(sizeClass) }
     }
 
     // MARK: DaySelectorDelegate
@@ -185,7 +185,7 @@ public final class DayHeaderView: UIView, DaySelectorDelegate, DayViewStateUpdat
     // MARK: UIPageViewControllerDelegate
 
     public func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
-        guard completed else {return}
+        guard completed else { return }
         if let selector = pageViewController.viewControllers?.first as? DaySelectorController {
             selector.selectedIndex = currentWeekdayIndex
             if let selectedDate = selector.selectedDate {
@@ -193,10 +193,10 @@ public final class DayHeaderView: UIView, DaySelectorDelegate, DayViewStateUpdat
             }
         }
         // Deselect all the views but the currently visible one
-        (previousViewControllers as? [DaySelectorController])?.forEach{$0.selectedIndex = -1}
+        (previousViewControllers as? [DaySelectorController])?.forEach { $0.selectedIndex = -1 }
     }
 
     public func pageViewController(_ pageViewController: UIPageViewController, willTransitionTo pendingViewControllers: [UIViewController]) {
-        (pendingViewControllers as? [DaySelectorController])?.forEach{$0.updateStyle(style.daySelector)}
+        (pendingViewControllers as? [DaySelectorController])?.forEach { $0.updateStyle(style.daySelector) }
     }
 }

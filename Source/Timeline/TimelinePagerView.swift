@@ -7,7 +7,7 @@ public protocol TimelinePagerViewDelegate: AnyObject {
     func timelinePagerDidBeginDragging(timelinePager: TimelinePagerView)
     func timelinePagerDidTransitionCancel(timelinePager: TimelinePagerView)
     func timelinePager(timelinePager: TimelinePagerView, willMoveTo date: Date)
-    func timelinePager(timelinePager: TimelinePagerView, didMoveTo  date: Date)
+    func timelinePager(timelinePager: TimelinePagerView, didMoveTo date: Date)
     func timelinePager(timelinePager: TimelinePagerView, didLongPressTimelineAt date: Date)
 
     // Editing
@@ -15,11 +15,10 @@ public protocol TimelinePagerViewDelegate: AnyObject {
 }
 
 public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScrollViewDelegate, DayViewStateUpdating, UIPageViewControllerDataSource, UIPageViewControllerDelegate, TimelineViewDelegate {
-
     public weak var dataSource: EventDataSource?
     public weak var delegate: TimelinePagerViewDelegate?
 
-    public private(set) var calendar: Calendar = Calendar.autoupdatingCurrent
+    public private(set) var calendar: Calendar = .autoupdatingCurrent
     public var eventEditingSnappingBehavior: EventEditingSnappingBehavior {
         didSet {
             updateEventEditingSnappingBehavior()
@@ -28,7 +27,7 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
 
     public var timelineScrollOffset: CGPoint {
         // Any view is fine as they are all synchronized
-        let offset = (currentTimeline)?.container.contentOffset
+        let offset = currentTimeline?.container.contentOffset
         return offset ?? CGPoint()
     }
 
@@ -54,11 +53,11 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
         return true
     }
 
-    public override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard gestureRecognizer == panGestureRecognizer else {
             return super.gestureRecognizerShouldBegin(gestureRecognizer)
         }
-        guard let pendingEvent = editedEventView else {return true}
+        guard let pendingEvent = editedEventView else { return true }
         let eventFrame = pendingEvent.frame
         let position = panGestureRecognizer.location(in: self)
         let contains = eventFrame.contains(position)
@@ -76,19 +75,19 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
 
     public init(calendar: Calendar) {
         self.calendar = calendar
-        self.eventEditingSnappingBehavior = SnapTo15MinuteIntervals(calendar)
+        eventEditingSnappingBehavior = SnapTo15MinuteIntervals(calendar)
         super.init(frame: .zero)
         configure()
     }
 
     override public init(frame: CGRect) {
-        self.eventEditingSnappingBehavior = SnapTo15MinuteIntervals(calendar)
+        eventEditingSnappingBehavior = SnapTo15MinuteIntervals(calendar)
         super.init(frame: frame)
         configure()
     }
 
-    required public init?(coder aDecoder: NSCoder) {
-        self.eventEditingSnappingBehavior = SnapTo15MinuteIntervals(calendar)
+    public required init?(coder aDecoder: NSCoder) {
+        eventEditingSnappingBehavior = SnapTo15MinuteIntervals(calendar)
         super.init(coder: aDecoder)
         configure()
     }
@@ -105,11 +104,11 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
 
     public func updateStyle(_ newStyle: TimelineStyle) {
         style = newStyle
-        pagingViewController.viewControllers?.forEach({ (timelineContainer) in
+        pagingViewController.viewControllers?.forEach { timelineContainer in
             if let controller = timelineContainer as? TimelineContainerController {
                 self.updateStyleOfTimelineContainer(controller: controller)
             }
-        })
+        }
         pagingViewController.view.backgroundColor = style.backgroundColor
     }
 
@@ -121,11 +120,11 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     }
 
     private func updateEventEditingSnappingBehavior() {
-        pagingViewController.viewControllers?.forEach({ (timelineContainer) in
+        pagingViewController.viewControllers?.forEach { timelineContainer in
             if let controller = timelineContainer as? TimelineContainerController {
                 controller.timeline.eventEditingSnappingBehavior = eventEditingSnappingBehavior
             }
-        })
+        }
     }
 
     public func timelinePanGestureRequire(toFail gesture: UIGestureRecognizer) {
@@ -175,11 +174,11 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     }
 
     public func reloadData() {
-        pagingViewController.children.forEach({ (controller) in
+        pagingViewController.children.forEach { controller in
             if let controller = controller as? TimelineContainerController {
                 self.updateTimeline(controller.timeline)
             }
-        })
+        }
     }
 
     override public func layoutSubviews() {
@@ -188,13 +187,13 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     }
 
     private func updateTimeline(_ timeline: TimelineView) {
-        guard let dataSource else {return}
+        guard let dataSource else { return }
         let date = timeline.date.dateOnly(calendar: calendar)
         let events = dataSource.eventsForDate(date)
 
         let end = calendar.date(byAdding: .day, value: 1, to: date)!
         let day = DateInterval(start: date, end: end)
-        let validEvents = events.filter{$0.dateInterval.intersects(day)}
+        let validEvents = events.filter { $0.dateInterval.intersects(day) }
         timeline.layoutAttributes = validEvents.map(EventLayoutAttributes.init)
     }
 
@@ -223,7 +222,6 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
         addSubview(eventView)
         // layout algo
         if let currentTimeline {
-
             for handle in eventView.eventResizeHandles {
                 let panGestureRecognizer = handle.panGestureRecognizer
                 panGestureRecognizer.addTarget(self, action: #selector(handleResizeHandlePanGesture(_:)))
@@ -235,7 +233,6 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
             // algo needs to be extracted to a separate object
             let yStart = timeline.dateToY(event.dateInterval.start) - offset
             let yEnd = timeline.dateToY(event.dateInterval.end) - offset
-
 
             let rightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
             let x = rightToLeft ? 0 : timeline.style.leadingInset
@@ -266,7 +263,6 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
 
     private var prevOffset: CGPoint = .zero
     @objc func handlePanGesture(_ sender: UIPanGestureRecognizer) {
-
         if let pendingEvent = editedEventView {
             let newCoord = sender.translation(in: pendingEvent)
             if sender.state == .began {
@@ -389,7 +385,7 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     /// Ends editing mode
     public func endEventEditing() {
         prevOffset = .zero
-        editedEventView?.eventResizeHandles.forEach{$0.panGestureRecognizer.removeTarget(self, action: nil)}
+        editedEventView?.eventResizeHandles.forEach { $0.panGestureRecognizer.removeTarget(self, action: nil) }
         editedEventView?.removeFromSuperview()
         editedEventView = nil
         editedEvent = nil
@@ -468,7 +464,7 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     // MARK: UIPageViewControllerDataSource
 
     public func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
-        guard let containerController = viewController as? TimelineContainerController  else {return nil}
+        guard let containerController = viewController as? TimelineContainerController else { return nil }
         let previousDate = calendar.date(byAdding: .day, value: -1, to: containerController.timeline.date)!
         let timelineContainerController = configureTimelineController(date: previousDate)
         let offset = (pageViewController.viewControllers?.first as? TimelineContainerController)?.container.contentOffset
@@ -477,7 +473,7 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     }
 
     public func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
-        guard let containerController = viewController as? TimelineContainerController  else {return nil}
+        guard let containerController = viewController as? TimelineContainerController else { return nil }
         let nextDate = calendar.date(byAdding: .day, value: 1, to: containerController.timeline.date)!
         let timelineContainerController = configureTimelineController(date: nextDate)
         let offset = (pageViewController.viewControllers?.first as? TimelineContainerController)?.container.contentOffset

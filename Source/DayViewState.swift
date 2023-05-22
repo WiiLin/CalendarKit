@@ -12,7 +12,7 @@ public final class DayViewState {
     public init(date: Date = Date(), calendar: Calendar = Calendar.autoupdatingCurrent) {
         let date = date.dateOnly(calendar: calendar)
         self.calendar = calendar
-        self.selectedDate = date
+        selectedDate = date
     }
 
     public func move(to date: Date) {
@@ -37,7 +37,7 @@ public final class DayViewState {
     }
 
     private func allClientsWithout(client: DayViewStateUpdating) -> [DayViewStateUpdating] {
-        clients.filter{$0 !== client}
+        clients.filter { $0 !== client }
     }
 
     private func notify(clients: [DayViewStateUpdating], moveTo date: Date) {

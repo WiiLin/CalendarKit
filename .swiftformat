@@ -1,0 +1,4 @@
+# https://github.com/nicklockwood/SwiftFormat/blob/master/Rules.md#unusedarguments
+--disable unusedArguments
+--disable wrapMultilineStatementBraces
+--exclude Pods

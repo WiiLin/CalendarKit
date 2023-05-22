@@ -35,7 +35,7 @@ public final class DateLabel: UILabel, DaySelectorItemProtocol {
         configure()
     }
 
-    required public init?(coder aDecoder: NSCoder) {
+    public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         configure()
     }
@@ -78,19 +78,20 @@ public final class DateLabel: UILabel, DaySelectorItemProtocol {
         return false
     }
 
-    private func animate(){
+    private func animate() {
         UIView.transition(with: self,
                           duration: 0.4,
                           options: .transitionCrossDissolve,
                           animations: {
-            self.updateState()
-        },
+                              self.updateState()
+                          },
                           completion: nil)
     }
 
     override public func layoutSubviews() {
         layer.cornerRadius = bounds.height / 2
     }
+
     override public func tintColorDidChange() {
         updateState()
     }

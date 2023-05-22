@@ -6,7 +6,7 @@ extension Date {
         let monthComponent = calendar.component(.month, from: self)
         let dayComponent = calendar.component(.day, from: self)
         let zone = calendar.timeZone
-        
+
         let newComponents = DateComponents(timeZone: zone,
                                            year: yearComponent,
                                            month: monthComponent,

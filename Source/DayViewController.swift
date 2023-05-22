@@ -1,7 +1,7 @@
 import UIKit
 
 open class DayViewController: UIViewController, EventDataSource, DayViewDelegate {
-    public lazy var dayView: DayView = DayView()
+    public lazy var dayView: DayView = .init()
     public var dataSource: EventDataSource? {
         get {
             dayView.dataSource
@@ -35,7 +35,7 @@ open class DayViewController: UIViewController, EventDataSource, DayViewDelegate
         }
     }
 
-    open override func loadView() {
+    override open func loadView() {
         view = dayView
     }
 
@@ -51,12 +51,12 @@ open class DayViewController: UIViewController, EventDataSource, DayViewDelegate
         configureDayViewLayoutForHorizontalSizeClass(sizeClass)
     }
 
-    open override func viewDidAppear(_ animated: Bool) {
+    override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         dayView.scrollToFirstEventIfNeeded()
     }
 
-    open override func willTransition(to newCollection: UITraitCollection, with coordinator: UIViewControllerTransitionCoordinator) {
+    override open func willTransition(to newCollection: UITraitCollection, with coordinator: UIViewControllerTransitionCoordinator) {
         super.willTransition(to: newCollection, with: coordinator)
         configureDayViewLayoutForHorizontalSizeClass(newCollection.horizontalSizeClass)
     }

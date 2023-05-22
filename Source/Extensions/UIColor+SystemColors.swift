@@ -16,21 +16,21 @@ public enum SystemColors {
     }
 
     public static var systemBackground: UIColor {
-#if os(iOS)
-        if #available(iOS 13, *) {
-            return .systemBackground
-        }
-#endif
+        #if os(iOS)
+            if #available(iOS 13, *) {
+                return .systemBackground
+            }
+        #endif
         return .white
     }
 
     public static var secondarySystemBackground: UIColor {
-#if os(iOS)
-        if #available(iOS 13, *) {
-            return .secondarySystemBackground
-        }
-#endif
-        return UIColor(white: 247/255, alpha: 1)
+        #if os(iOS)
+            if #available(iOS 13, *) {
+                return .secondarySystemBackground
+            }
+        #endif
+        return UIColor(white: 247 / 255, alpha: 1)
     }
 
     public static var systemRed: UIColor {
@@ -48,14 +48,14 @@ public enum SystemColors {
     }
 
     public static var systemGray4: UIColor {
-#if os(iOS)
-        if #available(iOS 13, *) {
-            return .systemGray4
-        }
-#endif
-        return UIColor(red: 209/255,
-                       green: 209/255,
-                       blue: 213/255,
+        #if os(iOS)
+            if #available(iOS 13, *) {
+                return .systemGray4
+            }
+        #endif
+        return UIColor(red: 209 / 255,
+                       green: 209 / 255,
+                       blue: 213 / 255,
                        alpha: 1)
     }
 
@@ -63,9 +63,9 @@ public enum SystemColors {
         if #available(iOS 13, tvOS 13, *) {
             return .opaqueSeparator
         }
-        return UIColor(red: 198/255,
-                       green: 198/255,
-                       blue: 200/255,
+        return UIColor(red: 198 / 255,
+                       green: 198 / 255,
+                       blue: 200 / 255,
                        alpha: 1)
     }
 }

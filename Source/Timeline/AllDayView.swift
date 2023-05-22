@@ -7,7 +7,7 @@ public final class AllDayView: UIView {
 
     public var events: [EventDescriptor] = [] {
         didSet {
-            self.reloadData()
+            reloadData()
         }
     }
 
@@ -41,7 +41,7 @@ public final class AllDayView: UIView {
         configure()
     }
 
-    required public init?(coder aDecoder: NSCoder) {
+    public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         configure()
     }
@@ -67,7 +67,7 @@ public final class AllDayView: UIView {
     private func configure() {
         clipsToBounds = true
         addSubview(scrollView)
-        //add All-Day UILabel
+        // add All-Day UILabel
         addSubview(textLabel)
 
         let svLeftConstraint = scrollView.leadingAnchor.constraint(equalTo: textLabel.trailingAnchor, constant: 8)
@@ -77,7 +77,7 @@ public final class AllDayView: UIView {
 
             NSLayoutConstraint(item: textLabel, attribute: .top, relatedBy: .equal, toItem: self, attribute: .top, multiplier: 1, constant: 4),
 
-            NSLayoutConstraint(item: textLabel, attribute: .height, relatedBy: .equal, toItem: nil, attribute: .notAnAttribute, multiplier: 1, constant: 24)
+            NSLayoutConstraint(item: textLabel, attribute: .height, relatedBy: .equal, toItem: nil, attribute: .notAnAttribute, multiplier: 1, constant: 24),
         ])
 
         /**
@@ -135,17 +135,16 @@ public final class AllDayView: UIView {
         eventViews.removeAll()
         scrollView.subviews.forEach { $0.removeFromSuperview() }
 
-        if self.events.count == 0 { return }
+        if events.count == 0 { return }
 
         // create vertical stack view
         let verticalStackView = UIStackView(
             distribution: .fillEqually,
             spacing: 1.0
         )
-        var horizontalStackView: UIStackView! = nil
+        var horizontalStackView: UIStackView!
 
-        for (index, anEventDescriptor) in self.events.enumerated() {
-
+        for (index, anEventDescriptor) in events.enumerated() {
             // create event
             let eventView = EventView(frame: CGRect.zero)
             eventView.updateWithDescriptor(event: anEventDescriptor)

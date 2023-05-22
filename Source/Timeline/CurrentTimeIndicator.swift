@@ -1,10 +1,10 @@
 import UIKit
 
 @objc public final class CurrentTimeIndicator: UIView {
-    private let padding : Double = 3
+    private let padding: Double = 3
     private let leadingInset: Double = 53
 
-    public var calendar: Calendar = Calendar.autoupdatingCurrent {
+    public var calendar: Calendar = .autoupdatingCurrent {
         didSet {
             updateDate()
         }
@@ -16,7 +16,7 @@ import UIKit
     }
 
     /// Determines if times should be displayed in a 24 hour format. Defaults to the current locale's setting
-    public var is24hClock : Bool = true {
+    public var is24hClock: Bool = true {
         didSet {
             updateDate()
         }
@@ -46,7 +46,7 @@ import UIKit
         configure()
     }
 
-    required public init?(coder aDecoder: NSCoder) {
+    public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         configure()
     }
@@ -56,14 +56,14 @@ import UIKit
             addSubview($0)
         }
 
-        //Allow label to adjust so that am/pm can be displayed if format is changed.
+        // Allow label to adjust so that am/pm can be displayed if format is changed.
         timeLabel.numberOfLines = 1
         timeLabel.textAlignment = .right
         timeLabel.adjustsFontSizeToFitWidth = true
         timeLabel.minimumScaleFactor = 0.5
 
-        //The width of the label is determined by leftInset and padding.
-        //The y position is determined by the line's middle.
+        // The width of the label is determined by leftInset and padding.
+        // The y position is determined by the line's middle.
         timeLabel.translatesAutoresizingMaskIntoConstraints = false
         timeLabel.widthAnchor.constraint(equalToConstant: leadingInset - (3 * padding)).isActive = true
         timeLabel.trailingAnchor.constraint(equalTo: line.leadingAnchor, constant: -padding).isActive = true
@@ -94,7 +94,7 @@ import UIKit
     private func invalidateTimer() {
         timer?.invalidate()
     }
-    
+
     private func updateDate() {
         dateFormatter.dateFormat = is24hClock ? "HH:mm" : "h:mm a"
         dateFormatter.calendar = calendar
@@ -108,7 +108,6 @@ import UIKit
     override public func layoutSubviews() {
         super.layoutSubviews()
         line.frame = {
-
             let x: Double
             let rightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
             if rightToLeft {
@@ -121,7 +120,6 @@ import UIKit
         }()
 
         circle.frame = {
-
             let x: Double
             if UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft {
                 x = bounds.width - leadingInset - 10
@@ -145,17 +143,14 @@ import UIKit
         switch style.dateStyle {
         case .twelveHour:
             is24hClock = false
-            break
         case .twentyFourHour:
             is24hClock = true
-            break
         default:
             is24hClock = Locale.autoupdatingCurrent.uses24hClock
-            break
         }
     }
 
-    public override func willMove(toSuperview newSuperview: UIView?) {
+    override public func willMove(toSuperview newSuperview: UIView?) {
         super.willMove(toSuperview: newSuperview)
         if newSuperview != nil {
             configureTimer()

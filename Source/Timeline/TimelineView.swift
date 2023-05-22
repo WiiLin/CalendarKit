@@ -29,7 +29,6 @@ public final class TimelineView: UIView {
             allDayLayoutAttributes + regularLayoutAttributes
         }
         set {
-
             // update layout attributes by separating all-day from non-all-day events
             allDayLayoutAttributes.removeAll()
             regularLayoutAttributes.removeAll()
@@ -51,17 +50,18 @@ public final class TimelineView: UIView {
             setNeedsLayout()
         }
     }
+
     private var pool = ReusePool<EventView>()
 
     public var firstEventYPosition: Double? {
-        let first = regularLayoutAttributes.sorted{$0.frame.origin.y < $1.frame.origin.y}.first
-        guard let firstEvent = first else {return nil}
+        let first = regularLayoutAttributes.sorted { $0.frame.origin.y < $1.frame.origin.y }.first
+        guard let firstEvent = first else { return nil }
         let firstEventPosition = firstEvent.frame.origin.y
         let beginningOfDayPosition = dateToY(date)
         return max(firstEventPosition, beginningOfDayPosition)
     }
 
-    private lazy var nowLine: CurrentTimeIndicator = CurrentTimeIndicator()
+    private lazy var nowLine: CurrentTimeIndicator = .init()
 
     private var allDayViewTopConstraint: NSLayoutConstraint?
     private lazy var allDayView: AllDayView = {
@@ -93,14 +93,14 @@ public final class TimelineView: UIView {
     public var calendarWidth: Double {
         bounds.width - style.leadingInset
     }
-    
+
     public private(set) var is24hClock = true {
         didSet {
             setNeedsDisplay()
         }
     }
 
-    public var calendar: Calendar = Calendar.autoupdatingCurrent {
+    public var calendar: Calendar = .autoupdatingCurrent {
         didSet {
             eventEditingSnappingBehavior.calendar = calendar
             nowLine.calendar = calendar
@@ -128,10 +128,10 @@ public final class TimelineView: UIView {
         _24hTimes = factory.make24hStrings()
     }
 
-    public lazy private(set) var longPressGestureRecognizer = UILongPressGestureRecognizer(target: self,
+    public private(set) lazy var longPressGestureRecognizer = UILongPressGestureRecognizer(target: self,
                                                                                            action: #selector(longPress(_:)))
 
-    public lazy private(set) var tapGestureRecognizer = UITapGestureRecognizer(target: self,
+    public private(set) lazy var tapGestureRecognizer = UITapGestureRecognizer(target: self,
                                                                                action: #selector(tap(_:)))
 
     private var isToday: Bool {
@@ -151,7 +151,7 @@ public final class TimelineView: UIView {
         configure()
     }
 
-    required public init?(coder aDecoder: NSCoder) {
+    public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         configure()
     }
@@ -171,7 +171,7 @@ public final class TimelineView: UIView {
     // MARK: - Event Handling
 
     @objc private func longPress(_ gestureRecognizer: UILongPressGestureRecognizer) {
-        if (gestureRecognizer.state == .began) {
+        if gestureRecognizer.state == .began {
             // Get timeslot of gesture location
             let pressedLocation = gestureRecognizer.location(in: self)
             if let eventView = findEventView(at: pressedLocation) {
@@ -208,7 +208,6 @@ public final class TimelineView: UIView {
         return nil
     }
 
-
     /**
      Custom implementation of the hitTest method is needed for the tap gesture recognizers
      located in the AllDayView to work.
@@ -217,7 +216,7 @@ public final class TimelineView: UIView {
      In the custom implementation the method is recursively invoked for all of the subviews,
      regardless of their position in relation to the Timeline's bounds.
      */
-    public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+    override public func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         for subview in allDayView.subviews {
             if let subSubView = subview.hitTest(convert(point, to: subview), with: event) {
                 return subSubView
@@ -279,8 +278,8 @@ public final class TimelineView: UIView {
         let paragraphStyle = mutableParagraphStyle.copy() as! NSParagraphStyle
 
         let attributes = [NSAttributedString.Key.paragraphStyle: paragraphStyle,
-                          NSAttributedString.Key.foregroundColor: self.style.timeColor,
-                          NSAttributedString.Key.font: style.font] as [NSAttributedString.Key : Any]
+                          NSAttributedString.Key.foregroundColor: style.timeColor,
+                          NSAttributedString.Key.font: style.font] as [NSAttributedString.Key: Any]
 
         let scale = UIScreen.main.scale
         let hourLineHeight = 1 / UIScreen.main.scale
@@ -349,7 +348,6 @@ public final class TimelineView: UIView {
             }
 
             if hour == accentedHour {
-
                 var x: Double
                 if UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft {
                     x = bounds.width - (style.leadingInset + 7)
@@ -357,7 +355,7 @@ public final class TimelineView: UIView {
                     x = 2
                 }
 
-                let timeRect = CGRect(x: x, y: hourFloat * style.verticalDiff + style.verticalInset - 7     + style.verticalDiff * (Double(accentedMinute) / 60),
+                let timeRect = CGRect(x: x, y: hourFloat * style.verticalDiff + style.verticalInset - 7 + style.verticalDiff * (Double(accentedMinute) / 60),
                                       width: style.leadingInset - 8, height: fontSize + 2)
 
                 let timeString = NSString(string: ":\(accentedMinute)")
@@ -415,7 +413,7 @@ public final class TimelineView: UIView {
     }
 
     private func layoutAllDayEvents() {
-        //add day view needs to be in front of the nowLine
+        // add day view needs to be in front of the nowLine
         bringSubviewToFront(allDayView)
     }
 
@@ -426,16 +424,15 @@ public final class TimelineView: UIView {
      `contentOffset.y` of the scroll view
      */
     public func offsetAllDayView(by yValue: Double) {
-        if let topConstraint = self.allDayViewTopConstraint {
+        if let topConstraint = allDayViewTopConstraint {
             topConstraint.constant = yValue
             layoutIfNeeded()
         }
     }
 
     private func recalculateEventLayout() {
-
         // only non allDay events need their frames to be set
-        let sortedEvents = self.regularLayoutAttributes.sorted { (attr1, attr2) -> Bool in
+        let sortedEvents = regularLayoutAttributes.sorted { attr1, attr2 -> Bool in
             let start1 = attr1.descriptor.dateInterval.start
             let start2 = attr2.descriptor.dateInterval.start
             return start1 < start2
@@ -450,7 +447,7 @@ public final class TimelineView: UIView {
                 continue
             }
 
-            let longestEvent = overlappingEvents.sorted { (attr1, attr2) -> Bool in
+            let longestEvent = overlappingEvents.sorted { attr1, attr2 -> Bool in
                 var period = attr1.descriptor.dateInterval
                 let period1 = period.end.timeIntervalSince(period.start)
                 period = attr2.descriptor.dateInterval
@@ -458,7 +455,7 @@ public final class TimelineView: UIView {
 
                 return period1 > period2
             }
-                .first!
+            .first!
 
             if style.eventsWillOverlap {
                 guard let earliestEvent = overlappingEvents.first?.descriptor.dateInterval.start else { continue }
@@ -551,7 +548,7 @@ public final class TimelineView: UIView {
         let offsetDate = calendar.date(byAdding: DateComponents(day: dayOffset),
                                        to: date)!
         let newDate = calendar.date(bySettingHour: hour,
-                                    minute: minute.clamped(to: 0...59),
+                                    minute: minute.clamped(to: 0 ... 59),
                                     second: 0,
                                     of: offsetDate)
         return newDate!
