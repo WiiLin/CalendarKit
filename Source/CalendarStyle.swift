@@ -31,10 +31,9 @@ public enum DateStyle {
         }
     }
     
-    public func inHourRange(startDate: Date, endDate: Date) -> Bool {
+    public func inHourRange(startDate: Date, endDate: Date, calendar: Calendar) -> Bool {
         switch self {
         case let .custom(start24Hour, end24Hour, _):
-            let calendar = Calendar.current
             let date = Date() // 取得目前時間
             let startDateHour = calendar.component(.hour, from: startDate)
             let endDateHour = calendar.component(.hour, from: endDate)
