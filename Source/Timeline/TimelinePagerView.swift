@@ -182,6 +182,12 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
         timeline.layoutAttributes = validEvents.map(EventLayoutAttributes.init)
     }
 
+    public func updateTimelineFrame() {
+        if let controller = currentTimeline {
+            controller.container.updateTimelineFrame()
+        }
+    }
+
     public func scrollToFirstEventIfNeeded(animated: Bool) {
         if autoScrollToFirstEvent {
             if let controller = currentTimeline {

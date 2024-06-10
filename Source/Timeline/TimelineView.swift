@@ -311,9 +311,9 @@ public final class TimelineView: UIView {
         }
     
         let offset = 0.5 - center
-    
-        let groupWidth = style.groupWidth()
-        for index in 0 ... style.groupCount {
+        var currentX: CGFloat = style.leadingInset
+        for index in 0 ..< style.groupCount {
+
             let context = UIGraphicsGetCurrentContext()
             context!.interpolationQuality = .none
             context?.saveGState()
@@ -321,11 +321,12 @@ public final class TimelineView: UIView {
             context?.setLineWidth(hourLineHeight)
         
             context?.beginPath()
-            let x = style.leadingInset + CGFloat(index) * groupWidth
-            context?.move(to: CGPoint(x: x, y: -30))
-            context?.addLine(to: CGPoint(x: x, y: bounds.maxY - style.verticalInset))
+
+            context?.move(to: CGPoint(x: currentX, y: -30))
+            context?.addLine(to: CGPoint(x: currentX, y: bounds.maxY - style.verticalInset))
             context?.strokePath()
             context?.restoreGState()
+            currentX += style.groupWidth(index: index)
         }
     
         for (hour, time) in times.enumerated() {
@@ -525,28 +526,31 @@ public final class TimelineView: UIView {
             groupsOfEvents.append([event])
         }
 
-        let groupWidth: CGFloat = style.groupWidth()
-        for overlappingEvents in groupsOfEvents {
+
+        for (index, overlappingEvents) in groupsOfEvents.enumerated() {
             let totalCount = CGFloat(overlappingEvents.count)
             for (index, event) in overlappingEvents.enumerated() {
+                let groupWidth: CGFloat = style.groupWidth(index: event.descriptor.group)
                 let startY = dateToY(event.descriptor.datePeriod.lowerBound)
                 let endY = dateToY(event.descriptor.datePeriod.upperBound)
                 print("⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️")
                 print("group = \(event.descriptor.group)")
-                print("leadingInset = \(style.leadingInset)")
 
                 let floatIndex = CGFloat(index)
                 print("floatIndex = \(floatIndex)")
                 print("groupWidth = \(groupWidth)")
-                let groupX = CGFloat(event.descriptor.group) * groupWidth
+                let groupX = style.groupX(index: event.descriptor.group)
                 print("groupX = \(groupX)")
+
                 let x = groupX + style.leadingInset + floatIndex / totalCount * groupWidth
                 print("x = \(x)")
-                let equalWidth = calendarWidth / totalCount / CGFloat(style.groupCount)
+                let equalWidth = groupWidth / totalCount
                 print("equalWidth \(equalWidth)")
+                print("🤔 equalWidth \(calendarWidth) / \(totalCount) / \(style.groupCount) = \(equalWidth) ？?? \(bounds.width)")
                 event.frame = CGRect(x: x, y: startY, width: equalWidth, height: endY - startY)
                 print("event.frame \(event.frame)")
                 print("⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️\n\n")
+
             }
         }
     }

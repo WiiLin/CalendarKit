@@ -32,18 +32,19 @@ class GroupNameView: UIView {
     func updateStyle(_ newStyle: TimelineStyle) {
         style = newStyle
         subviews.forEach { $0.removeFromSuperview() }
-        let groupWidth = newStyle.groupWidth()
+
         let spaceView = UIView(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: 30))
         addSubview(spaceView)
       
+        var currentX: CGFloat = 0
         for index in 0 ..< newStyle.group.count {
-            let label = UILabel(frame: CGRect(x: CGFloat(index) * groupWidth + newStyle.leadingInset, y: 0, width: groupWidth, height: 30))
+            let label = UILabel(frame: CGRect(x: currentX + newStyle.leadingInset, y: 0, width: newStyle.groupWidth(index: index), height: 30))
             label.numberOfLines = 0
             label.adjustsFontSizeToFitWidth = true
             label.minimumScaleFactor = 0.5
             label.textAlignment = .center
             label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-            let text = newStyle.group[index]
+            let text = newStyle.group[index].name
             let texts = text.split(separator: "\n")
             if texts.count == 2 {
                 let attribute = NSMutableAttributedString(string: text)
@@ -59,6 +60,7 @@ class GroupNameView: UIView {
                 label.text = text
             }
             addSubview(label)
+            currentX += newStyle.groupWidth(index: index)
         }
         setNeedsDisplay()
     }

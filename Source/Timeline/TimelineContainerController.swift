@@ -124,9 +124,9 @@ class LockTimelineView: UIView {
         }
       
         let offset = 0.5 - center
-      
-        let groupWidth = timelineView.style.groupWidth()
-        for index in 0 ... timelineView.style.groupCount {
+        var currentX: CGFloat = 0
+        for index in 0 ..< timelineView.style.groupCount {
+
             let context = UIGraphicsGetCurrentContext()
             context!.interpolationQuality = .none
             context?.saveGState()
@@ -134,11 +134,12 @@ class LockTimelineView: UIView {
             context?.setLineWidth(hourLineHeight)
           
             context?.beginPath()
-            let x = timelineView.style.leadingInset + CGFloat(index) * groupWidth
+            let x = timelineView.style.leadingInset + currentX
             context?.move(to: CGPoint(x: x, y: -30))
             context?.addLine(to: CGPoint(x: x, y: bounds.maxY - timelineView.style.verticalInset))
             context?.strokePath()
             context?.restoreGState()
+            currentX += timelineView.style.groupWidth(index: index)
         }
       
         for (hour, time) in timelineView.times.enumerated() {

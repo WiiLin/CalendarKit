@@ -114,9 +114,10 @@ public class DayView: UIView, TimelinePagerViewDelegate {
     public func scrollToFirstEventIfNeeded(animated: Bool = true) {
         timelinePagerView.scrollToFirstEventIfNeeded(animated: animated)
     }
-
+    
     public func reloadData() {
         timelinePagerView.reloadData()
+        timelinePagerView.updateTimelineFrame()
     }
   
     public func move(to date: Date) {

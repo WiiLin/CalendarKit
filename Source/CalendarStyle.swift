@@ -103,27 +103,44 @@ public struct TimelineStyle {
     public var verticalInset: CGFloat = 10
     public var leadingInset: CGFloat = 53
     public var eventGap: CGFloat = 0
-    public var group: [String] = []
+    public var group: [(name: String, width: CGFloat)] = []
     var groupCount: Int {
-        return group.isEmpty ? 1 : group.count
+        return group.count
     }
-    
+
+    var totalGroupWidth: CGFloat {
+        return group.map { $0.width }.reduce(0, {$0 + $1})
+    }
+
     public var fixWidthGroupCount: Int = 7
     
+//    func contentWidth() -> CGFloat {
+//        if groupCount <= fixWidthGroupCount {
+//            return UIScreen.main.bounds.width
+//        } else {
+//            return leadingInset + (110.0 * CGFloat(groupCount))
+//        }
+//    }
+//
+//    func groupWidth(index: Int) -> CGFloat {
+//        if groupCount <= fixWidthGroupCount {
+//            return (UIScreen.main.bounds.width - leadingInset) / CGFloat(groupCount)
+//        } else {
+//            return 110
+//        }
+//    }
+
+
     func contentWidth() -> CGFloat {
-        if groupCount <= fixWidthGroupCount {
-            return UIScreen.main.bounds.width
-        } else {
-            return leadingInset + (110.0 * CGFloat(groupCount))
-        }
+        return leadingInset + totalGroupWidth
     }
     
-    func groupWidth() -> CGFloat {
-        if groupCount <= fixWidthGroupCount {
-            return (UIScreen.main.bounds.width - leadingInset) / CGFloat(groupCount)
-        } else {
-            return 110
-        }
+    func groupWidth(index: Int) -> CGFloat {
+        return group[safe: index]?.width ?? 0
+    }
+
+    func groupX(index: Int) -> CGFloat {
+        return group.prefix(index).map { $0.width }.reduce(0, {$0 + $1})
     }
 
     public init() {}
@@ -141,4 +158,14 @@ public struct AllDayViewStyle {
     public var allDayFont = UIFont.systemFont(ofSize: 12.0)
     public var allDayColor: UIColor = SystemColors.label
     public init() {}
+}
+
+
+
+
+private extension Collection {
+    /// Returns the element at the specified index if it is within bounds, otherwise nil.
+    subscript (safe index: Index) -> Element? {
+        return indices.contains(index) ? self[index] : nil
+    }
 }

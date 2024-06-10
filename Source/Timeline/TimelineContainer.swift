@@ -59,4 +59,7 @@ public final class TimelineContainer: UIScrollView {
         let newContentY = (yToScroll < bottomOfScrollView) ? yToScroll : bottomOfScrollView
         setContentOffset(CGPoint(x: offset.x, y: newContentY), animated: animated)
     }
+    public func updateTimelineFrame() {
+        timeline.frame = CGRect(x: 0, y: 0, width: timeline.style.contentWidth(), height: timeline.fullHeight)
+    }
 }

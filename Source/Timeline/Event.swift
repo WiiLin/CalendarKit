@@ -73,3 +73,76 @@ public final class Event: EventDescriptor {
         textColor = .white
     }
 }
+
+public extension Event {
+    static func groupWidth(_ periods: [Event]) -> CGFloat {
+        let array = periods.map {($0.startDate, $0.endDate)}
+
+        let maxOverlap = Self.totalOverlapPeriods(periods)
+        let width = 110.0
+        return width * Double(maxOverlap)
+    }
+
+
+    static func updateGroupWidthIfNeed(group: [(name: String, width: CGFloat)], totalWidth: CGFloat) -> [(name: String, width: CGFloat)] {
+        var group = group
+
+        let currentTotalWidth = group.reduce(0) { $0 + $1.width }
+
+        if currentTotalWidth < totalWidth {
+            let scaleFactor = totalWidth / currentTotalWidth
+            group = group.map { (name, width) in
+                return (name, width * scaleFactor)
+            }
+        }
+
+        return group
+    }
+
+
+    static func totalOverlapPeriods(_ periods: [Event]) -> Int {
+        let validEvents = periods.filter { $0.range != nil }
+        let sortedEvents = validEvents.sorted { $0.startDate < $1.startDate }
+        var groupsOfEvents = [[Event]]()
+
+        for event in sortedEvents {
+            guard let eventRange = event.range else { continue }
+
+            var foundGroup = false
+
+            for i in 0..<groupsOfEvents.count {
+                let group = groupsOfEvents[i]
+                let longestEvent = group.sorted { (event1, event2) -> Bool in
+                    let period1 = event1.endDate.timeIntervalSince(event1.startDate)
+                    let period2 = event2.endDate.timeIntervalSince(event2.startDate)
+                    return period1 > period2
+                }.first!
+
+                if let longestRange = longestEvent.range, longestRange.overlaps(eventRange) {
+                    groupsOfEvents[i].append(event)
+                    foundGroup = true
+                    break
+                }
+            }
+
+            if !foundGroup {
+                groupsOfEvents.append([event])
+            }
+        }
+
+        let longestGroupCount = groupsOfEvents.map { $0.count }.max() ?? 0
+        return longestGroupCount == 0 ? 1 : longestGroupCount
+      }
+
+
+}
+
+extension Event {
+    var range: ClosedRange<Date>? {
+        if endDate >= startDate {
+            return startDate...endDate
+        } else {
+            return nil
+        }
+     }
+}
