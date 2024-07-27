@@ -1,19 +1,22 @@
 import UIKit
 
-final class ReusePool<T: UIView> {
-    private var storage: [T]
+final class ReusePool {
+
+    static let shared = ReusePool()
+
+    private var storage: [EventView]
 
     init() {
-        storage = [T]()
+        storage = [EventView]()
     }
 
-    func enqueue(views: [T]) {
+    func enqueue(views: [EventView]) {
         views.forEach { $0.frame = .zero }
         storage.append(contentsOf: views)
     }
 
-    func dequeue() -> T {
-        guard !storage.isEmpty else { return T() }
+    func dequeue() -> EventView {
+        guard !storage.isEmpty else { return EventView() }
         return storage.removeLast()
     }
 }

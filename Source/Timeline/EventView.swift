@@ -4,27 +4,20 @@ open class EventView: UIView {
     public var descriptor: EventDescriptor?
     public var color = SystemColors.label
 
-    public var contentHeight: CGFloat {
-        return textView.frame.height
-    }
-
-    public lazy var textView: UITextView = {
-        let view = UITextView()
-        view.isUserInteractionEnabled = false
-        view.backgroundColor = .clear
-        view.isScrollEnabled = false
-        view.textContainerInset.top = 1
-        view.textContainerInset.left = 0
-        return view
-    }()
-    
-    public lazy var imageView: UIImageView = {
-        let imageView = UIImageView()
-        return imageView
+    public lazy var label: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 2
+        label.backgroundColor = .clear
+        label.isUserInteractionEnabled = false
+        return label
     }()
 
-    /// Resize Handle views showing up when editing the event.
-    /// The top handle has a tag of `0` and the bottom has a tag of `1`
+    // Replace UIImageView with a CALayer
+    public lazy var imageLayer: CALayer = {
+        let layer = CALayer()
+        return layer
+    }()
+
     public lazy var eventResizeHandles = [EventResizeHandleView(), EventResizeHandleView()]
 
     override public init(frame: CGRect) {
@@ -40,9 +33,9 @@ open class EventView: UIView {
     private func configure() {
         clipsToBounds = false
         color = tintColor
-        addSubview(textView)
-        addSubview(imageView)
-    
+        addSubview(label)
+        layer.addSublayer(imageLayer)
+
         for (idx, handle) in eventResizeHandles.enumerated() {
             handle.tag = idx
             addSubview(handle)
@@ -53,14 +46,11 @@ open class EventView: UIView {
 
     public func updateWithDescriptor(event: EventDescriptor) {
         if let attributedText = event.attributedText {
-            textView.attributedText = attributedText
+            label.attributedText = attributedText
         } else {
-            textView.text = event.text
-            textView.textColor = event.textColor
-            textView.font = event.font
-        }
-        if let lineBreakMode = event.lineBreakMode {
-            textView.textContainer.lineBreakMode = lineBreakMode
+            label.text = event.text
+            label.textColor = event.textColor
+            label.font = event.font
         }
         descriptor = event
         backgroundColor = event.backgroundColor
@@ -72,11 +62,18 @@ open class EventView: UIView {
             $0.isHidden = event.editedEvent == nil
         }
         drawsShadow = event.editedEvent != nil
-        imageView.image = event.image
+
+        // Set image to the layer's contents
+        if let image = event.image {
+            imageLayer.contents = image.cgImage
+        } else {
+            imageLayer.contents = nil
+        }
+
         setNeedsDisplay()
         setNeedsLayout()
     }
-  
+
     public func animateCreation() {
         transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
         func scaleAnimation() {
@@ -91,14 +88,6 @@ open class EventView: UIView {
                        completion: nil)
     }
 
-    /**
-     Custom implementation of the hitTest method is needed for the tap gesture recognizers
-     located in the ResizeHandleView to work.
-     Since the ResizeHandleView could be outside of the EventView's bounds, the touches to the ResizeHandleView
-     are ignored.
-     In the custom implementation the method is recursively invoked for all of the subviews,
-     regardless of their position in relation to the Timeline's bounds.
-     */
     override public func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         for resizeHandle in eventResizeHandles {
             if let subSubView = resizeHandle.hitTest(convert(point, to: resizeHandle), with: event) {
@@ -119,7 +108,7 @@ open class EventView: UIView {
         context.setLineWidth(1)
         context.translateBy(x: 0, y: 0.5)
         let leftToRight = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .leftToRight
-        let x: CGFloat = leftToRight ? 0 : frame.width - 1 // 1 is the line width
+        let x: CGFloat = leftToRight ? 0 : frame.width - 1
         let y: CGFloat = 0
         context.beginPath()
         context.move(to: CGPoint(x: x, y: y))
@@ -134,22 +123,23 @@ open class EventView: UIView {
         super.layoutSubviews()
         let imageWidth = 20.0
         let padding = 3.0
-        textView.frame = CGRect(x: bounds.minX + padding,
-                                y: bounds.minY,
-                                width: bounds.width - padding - imageWidth - padding,
-                                height: bounds.height)
-        imageView.frame = CGRect(x: bounds.maxX - imageWidth - padding,
-                                 y: bounds.minY + padding,
-                                 width: imageWidth,
-                                 height: imageWidth)
-        
+        label.frame = CGRect(x: bounds.minX + padding,
+                             y: bounds.minY,
+                             width: bounds.width - padding - imageWidth - padding,
+                             height: bounds.height)
+
+        imageLayer.frame = CGRect(x: bounds.maxX - imageWidth - padding,
+                                  y: bounds.minY + padding,
+                                  width: imageWidth,
+                                  height: imageWidth)
+
         if frame.minY < 0 {
-            var textFrame = textView.frame
+            var textFrame = label.frame
             textFrame.origin.y = frame.minY * -1
             textFrame.size.height += frame.minY
-            textView.frame = textFrame
+            label.frame = textFrame
         }
-        
+
         let first = eventResizeHandles.first
         let last = eventResizeHandles.last
         let radius: CGFloat = 40
@@ -161,7 +151,7 @@ open class EventView: UIView {
                               size: size)
         last?.frame = CGRect(origin: CGPoint(x: layoutMargins.left, y: height - yPad - radius),
                              size: size)
-        
+
         if drawsShadow {
             applySketchShadow(alpha: 0.13,
                               blur: 10)

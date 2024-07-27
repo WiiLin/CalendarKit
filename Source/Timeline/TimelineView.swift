@@ -51,7 +51,7 @@ public final class TimelineView: UIView {
         }
     }
 
-    private var pool = ReusePool<EventView>()
+   
 
     public var firstEventYPosition: CGFloat? {
         let first = regularLayoutAttributes.sorted { $0.frame.origin.y < $1.frame.origin.y }.first
@@ -556,10 +556,10 @@ public final class TimelineView: UIView {
     }
 
     private func prepareEventViews() {
-        pool.enqueue(views: eventViews)
+        ReusePool.shared.enqueue(views: eventViews)
         eventViews.removeAll()
         for _ in regularLayoutAttributes {
-            let newView = pool.dequeue()
+            let newView = ReusePool.shared.dequeue()
             if newView.superview == nil {
                 addSubview(newView)
             }
@@ -568,7 +568,7 @@ public final class TimelineView: UIView {
     }
 
     public func prepareForReuse() {
-        pool.enqueue(views: eventViews)
+        ReusePool.shared.enqueue(views: eventViews)
         eventViews.removeAll()
         setNeedsDisplay()
     }
