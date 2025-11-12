@@ -1,32 +1,45 @@
 import UIKit
 
+/// TimelineView 的代理協議，用於處理用戶交互事件
 public protocol TimelineViewDelegate: AnyObject {
+    /// 當用戶點擊時間軸上的某個時間點時調用
     func timelineView(_ timelineView: TimelineView, didTapAt date: Date)
+    /// 當用戶長按時間軸上的某個時間點時調用
     func timelineView(_ timelineView: TimelineView, didLongPressAt date: Date)
+    /// 當用戶點擊某個事件視圖時調用
     func timelineView(_ timelineView: TimelineView, didTap event: EventView)
+    /// 當用戶長按某個事件視圖時調用
     func timelineView(_ timelineView: TimelineView, didLongPress event: EventView)
 }
 
+/// 時間軸視圖，用於顯示日曆事件和時間軸
 public final class TimelineView: UIView {
+    /// 代理對象，用於接收用戶交互事件
     public weak var delegate: TimelineViewDelegate?
 
+    /// 當前顯示的日期，當設置時會觸發重新佈局
     public var date = Date() {
         didSet {
             setNeedsLayout()
         }
     }
 
+    /// 當前時間（實時獲取）
     public var currentTime: Date {
         return Date()
     }
 
+    /// 所有事件視圖的陣列（非全天事件）
     private var eventViews = [EventView]()
+    /// 一般事件的佈局屬性陣列（只讀）
     public private(set) var regularLayoutAttributes = [EventLayoutAttributes]()
+    /// 全天事件的佈局屬性陣列（只讀）
     public private(set) var allDayLayoutAttributes = [EventLayoutAttributes]()
   
+    /// 所有事件的佈局屬性，設置時會自動分離全天事件和一般事件，並重新計算佈局
     public var layoutAttributes: [EventLayoutAttributes] {
         set {
-            // update layout attributes by separating allday from non all day events
+            // 更新佈局屬性，將全天事件和一般事件分開處理
             allDayLayoutAttributes.removeAll()
             regularLayoutAttributes.removeAll()
             for anEventLayoutAttribute in newValue {
@@ -51,8 +64,10 @@ public final class TimelineView: UIView {
         }
     }
 
+    /// 事件視圖重用池，用於重用 EventView 實例以提升效能
     private var pool = ReusePool<EventView>()
 
+    /// 第一個事件的 Y 座標位置，用於自動滾動到第一個事件
     public var firstEventYPosition: CGFloat? {
         let first = regularLayoutAttributes.sorted { $0.frame.origin.y < $1.frame.origin.y }.first
         guard let firstEvent = first else { return nil }
@@ -61,10 +76,13 @@ public final class TimelineView: UIView {
         return max(firstEventPosition, beginningOfDayPosition)
     }
 
+    /// 當前時間指示線（顯示當前時間的紅色線）
     private lazy var nowLine: CurrentTimeIndicator = .init()
   
+    /// 全天視圖的頂部約束，用於在滾動時保持固定位置
     private var allDayViewTopConstraint: NSLayoutConstraint?
     
+    /// 組名稱視圖（顯示設計師名稱等）
     private lazy var groupNameView: GroupNameView = {
         let groupNameView = GroupNameView(frame: CGRect.zero)
         groupNameView.translatesAutoresizingMaskIntoConstraints = false
@@ -76,6 +94,7 @@ public final class TimelineView: UIView {
         return groupNameView
     }()
     
+    /// 全天事件視圖容器
     private lazy var allDayView: AllDayView = {
         let allDayView = AllDayView(frame: CGRect.zero)
     
@@ -91,29 +110,37 @@ public final class TimelineView: UIView {
         return allDayView
     }()
     
+    /// 組名稱視圖的高度
     var groupNameViewHeight: CGFloat = 30
   
+    /// 全天視圖的實際高度
     var allDayViewHeight: CGFloat {
         return allDayView.bounds.height
     }
 
+    /// 時間軸的樣式配置
     public var style = TimelineStyle()
+    /// 事件視圖的水平內邊距
     private var horizontalEventInset: CGFloat = 3
 
+    /// 時間軸的完整高度（包含所有小時）
     public var fullHeight: CGFloat {
         return style.verticalInset * 2 + style.verticalDiff * CGFloat(style.dateStyle.count)
     }
 
+    /// 日曆區域的寬度（總寬度減去左側時間標籤寬度）
     public var calendarWidth: CGFloat {
         return bounds.width - style.leadingInset
     }
     
+    /// 是否使用 24 小時制顯示時間
     public private(set) var is24hClock = true {
         didSet {
             setNeedsDisplay()
         }
     }
 
+    /// 使用的日曆系統，設置時會更新相關行為
     public var calendar: Calendar = .autoupdatingCurrent {
         didSet {
             snappingBehavior = snappingBehaviorType.init(calendar)
@@ -123,10 +150,13 @@ public final class TimelineView: UIView {
         }
     }
   
+    /// 事件編輯時的對齊行為類型（例如：對齊到 15 分鐘間隔）
     // TODO: Make a public API
     public var snappingBehaviorType: EventEditingSnappingBehavior.Type = SnapTo15MinuteIntervals.self
+    /// 事件編輯時的對齊行為實例
     lazy var snappingBehavior: EventEditingSnappingBehavior = snappingBehaviorType.init(calendar)
 
+    /// 時間標籤字串陣列（用於顯示在左側）
     public var times: [String] {
         switch style.dateStyle {
         case let .custom(_, _, timeStrings):
@@ -136,43 +166,53 @@ public final class TimelineView: UIView {
         }
     }
 
+    /// 12 小時制的時間字串陣列
     private lazy var _12hTimes: [String] = TimeStringsFactory(calendar).make12hStrings()
+    /// 24 小時制的時間字串陣列
     private lazy var _24hTimes: [String] = TimeStringsFactory(calendar).make24hStrings()
   
+    /// 重新生成時間字串（當日曆改變時調用）
     private func regenerateTimeStrings() {
         let factory = TimeStringsFactory(calendar)
         _12hTimes = factory.make12hStrings()
         _24hTimes = factory.make24hStrings()
     }
   
+    /// 長按手勢識別器
     public lazy var longPressGestureRecognizer = UILongPressGestureRecognizer(target: self,
                                                                               action: #selector(longPress(_:)))
 
+    /// 點擊手勢識別器
     public lazy var tapGestureRecognizer = UITapGestureRecognizer(target: self,
                                                                   action: #selector(tap(_:)))
 
+    /// 判斷當前顯示的日期是否為今天
     public var isToday: Bool {
         return calendar.isDateInToday(date)
     }
   
     // MARK: - Initialization
   
+    /// 初始化時間軸視圖（使用默認 frame）
     public init() {
         super.init(frame: .zero)
         frame.size.height = fullHeight
         configure()
     }
 
+    /// 使用指定的 frame 初始化時間軸視圖
     override public init(frame: CGRect) {
         super.init(frame: frame)
         configure()
     }
 
+    /// 從 Storyboard/XIB 初始化時間軸視圖
     public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         configure()
     }
 
+    /// 配置視圖的基本設置
     private func configure() {
         contentScaleFactor = 1
         layer.contentsScale = 1
@@ -180,7 +220,7 @@ public final class TimelineView: UIView {
         backgroundColor = .white
         addSubview(nowLine)
     
-        // Add long press gesture recognizer
+        // 添加長按和點擊手勢識別器
         addGestureRecognizer(longPressGestureRecognizer)
         addGestureRecognizer(tapGestureRecognizer)
         groupNameView.backgroundColor = .white
@@ -188,28 +228,40 @@ public final class TimelineView: UIView {
   
     // MARK: - Event Handling
   
+    /// 處理長按手勢
+    /// - Parameter gestureRecognizer: 長按手勢識別器
     @objc private func longPress(_ gestureRecognizer: UILongPressGestureRecognizer) {
         if gestureRecognizer.state == .began {
-            // Get timeslot of gesture location
+            // 獲取手勢位置對應的時間點
             let pressedLocation = gestureRecognizer.location(in: self)
             if let eventView = findEventView(at: pressedLocation) {
+                // 如果點擊的是事件視圖，通知代理
                 delegate?.timelineView(self, didLongPress: eventView)
             } else {
+                // 如果點擊的是空白區域，通知代理對應的時間點
                 delegate?.timelineView(self, didLongPressAt: yToDate(pressedLocation.y))
             }
         }
     }
   
+    /// 處理點擊手勢
+    /// - Parameter sender: 點擊手勢識別器
     @objc private func tap(_ sender: UITapGestureRecognizer) {
         let pressedLocation = sender.location(in: self)
         if let eventView = findEventView(at: pressedLocation) {
+            // 如果點擊的是事件視圖，通知代理
             delegate?.timelineView(self, didTap: eventView)
         } else {
+            // 如果點擊的是空白區域，通知代理對應的時間點
             delegate?.timelineView(self, didTapAt: yToDate(pressedLocation.y))
         }
     }
   
+    /// 在指定位置查找事件視圖
+    /// - Parameter point: 要查找的座標點
+    /// - Returns: 找到的事件視圖，如果沒有則返回 nil
     private func findEventView(at point: CGPoint) -> EventView? {
+        // 先檢查全天事件視圖
         for eventView in allDayView.eventViews {
             let frame = eventView.convert(eventView.bounds, to: self)
             if frame.contains(point) {
@@ -217,6 +269,7 @@ public final class TimelineView: UIView {
             }
         }
 
+        // 再檢查一般事件視圖
         for eventView in eventViews {
             let frame = eventView.frame
             if frame.contains(point) {
@@ -245,6 +298,8 @@ public final class TimelineView: UIView {
   
     // MARK: - Style
 
+    /// 更新時間軸的樣式
+    /// - Parameter newStyle: 新的樣式配置
     public func updateStyle(_ newStyle: TimelineStyle) {
         style = newStyle
         allDayView.updateStyle(style.allDayStyle)
@@ -266,6 +321,7 @@ public final class TimelineView: UIView {
   
     // MARK: - Background Pattern
 
+    /// 需要強調顯示的日期（用於繪製特殊標記）
     public var accentedDate: Date?
 
     override public func draw(_ rect: CGRect) {
@@ -403,8 +459,10 @@ public final class TimelineView: UIView {
   
     // MARK: - Layout
 
+    /// 當視圖需要重新佈局時調用
     override public func layoutSubviews() {
         super.layoutSubviews()
+        // 如果正在拖動，不重新計算佈局
         if (superview as? TimelineContainer)?.isDragging ?? false { return }
         recalculateEventLayout()
         layoutEvents()
@@ -412,10 +470,13 @@ public final class TimelineView: UIView {
         layoutAllDayEvents()
     }
 
+    /// 佈局當前時間指示線
     private func layoutNowLine() {
         if !isToday {
+            // 如果不是今天，隱藏時間線
             nowLine.alpha = 0
         } else {
+            // 如果是今天，顯示並定位時間線
             bringSubviewToFront(nowLine)
             nowLine.alpha = 1
             let size = CGSize(width: bounds.size.width, height: 20)
@@ -426,6 +487,7 @@ public final class TimelineView: UIView {
         }
     }
 
+    /// 佈局所有事件視圖
     private func layoutEvents() {
         if eventViews.isEmpty { return }
     
@@ -434,12 +496,14 @@ public final class TimelineView: UIView {
             let eventView = eventViews[idx]
             eventView.frame = attributes.frame
         
+            // 處理 RTL（從右到左）佈局
             var x: CGFloat
             if UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft {
                 x = bounds.width - attributes.frame.minX - attributes.frame.width
             } else {
                 x = attributes.frame.minX
             }
+            // 添加內邊距
             let widthPadding: CGFloat = 2.0
             let heightPadding: CGFloat = 2.0
             eventView.frame = CGRect(x: x + widthPadding,
@@ -450,16 +514,17 @@ public final class TimelineView: UIView {
         }
     }
   
+    /// 佈局全天事件視圖（確保在最前面）
     private func layoutAllDayEvents() {
-        // add day view needs to be in front of the nowLine
+        // 全天視圖需要顯示在當前時間線前面
         bringSubviewToFront(allDayView)
     }
   
     /**
-     This will keep the allDayView as a staionary view in its superview
+     調整全天視圖的位置，使其在滾動時保持固定
+     當父視圖是 ScrollView 時，此方法用於保持全天視圖在頂部可見
    
-     - parameter yValue: since the superview is a scrollView, `yValue` is the
-     `contentOffset.y` of the scroll view
+     - Parameter yValue: 滾動偏移量，通常是 ScrollView 的 contentOffset.y
      */
     public func offsetAllDayView(by yValue: CGFloat) {
         if let topConstraint = allDayViewTopConstraint {
@@ -472,6 +537,12 @@ public final class TimelineView: UIView {
 //    }
     }
 
+    /// 檢查日期範圍是否與其他日期範圍重疊
+    /// - Parameters:
+    ///   - date: 要檢查的日期範圍
+    ///   - dates: 其他日期範圍陣列
+    ///   - eventGap: 事件之間的間隔（未使用，保留用於未來擴展）
+    /// - Returns: 如果重疊則返回 true，否則返回 false
     public class func overlap(date: ClosedRange<Date>, dates: [ClosedRange<Date>], eventGap: CGFloat) -> Bool {
         for element in dates {
             let overlap = date.overlaps(element)
@@ -482,14 +553,17 @@ public final class TimelineView: UIView {
         return false
     }
 
+    /// 重新計算事件的佈局（只處理非全天事件）
+    /// 將重疊的事件分組，並計算每個事件的 frame
     private func recalculateEventLayout() {
-        // only non allDay events need their frames to be set
+        // 只處理非全天事件，按開始時間排序
         let sortedEvents = regularLayoutAttributes.sorted { attr1, attr2 -> Bool in
             let start1 = attr1.descriptor.startDate
             let start2 = attr2.descriptor.startDate
             return start1 < start2
         }
 
+        // 將重疊的事件分組（同一組的事件會並排顯示）
         var groupsOfEvents = [[EventLayoutAttributes]]() // 整理好一包一包的 重疊時間得event
 //    var overlappingEvents = [EventLayoutAttributes]() //重疊時間得event
     
@@ -555,9 +629,18 @@ public final class TimelineView: UIView {
         }
     }
 
+    /// 準備事件視圖（重用池機制）
+    /// 將舊視圖回收到池中，然後從池中取出或創建新視圖
     private func prepareEventViews() {
+        let beforeEnqueueCount = pool.storage.count
+        let oldEventViewsCount = eventViews.count
+        // 將舊視圖回收到重用池
         pool.enqueue(views: eventViews)
+        let afterEnqueueCount = pool.storage.count
         eventViews.removeAll()
+        let beforeDequeueCount = pool.storage.count
+        let regularLayoutAttributesCount = regularLayoutAttributes.count
+        // 從重用池中取出視圖（如果池為空則創建新的）
         for _ in regularLayoutAttributes {
             let newView = pool.dequeue()
             if newView.superview == nil {
@@ -565,8 +648,11 @@ public final class TimelineView: UIView {
             }
             eventViews.append(newView)
         }
+        let afterDequeueCount = pool.storage.count
+        print("🔄 prepareEventViews: oldEventViews=\(oldEventViewsCount), regularLayoutAttributes=\(regularLayoutAttributesCount), pool: beforeEnqueue=\(beforeEnqueueCount) → afterEnqueue=\(afterEnqueueCount) → beforeDequeue=\(beforeDequeueCount) → afterDequeue=\(afterDequeueCount)")
     }
 
+    /// 準備重用視圖（清理當前視圖並回收到池中）
     public func prepareForReuse() {
         pool.enqueue(views: eventViews)
         eventViews.removeAll()
@@ -575,15 +661,18 @@ public final class TimelineView: UIView {
 
     // MARK: - Helpers
 
+    /// 將日期轉換為 Y 座標
+    /// - Parameter date: 要轉換的日期
+    /// - Returns: 對應的 Y 座標位置
     public func dateToY(_ date: Date) -> CGFloat {
         let provisionedDate = date.dateOnly(calendar: calendar)
         let timelineDate = self.date.dateOnly(calendar: calendar)
         var dayOffset: CGFloat = 0
         if provisionedDate > timelineDate {
-            // Event ending the next day
+            // 事件結束於下一天
             dayOffset += 1
         } else if provisionedDate < timelineDate {
-            // Event starting the previous day
+            // 事件開始於前一天
             dayOffset -= 1
         }
         let fullTimelineHeight = CGFloat(style.dateStyle.count) * style.verticalDiff
@@ -594,6 +683,9 @@ public final class TimelineView: UIView {
         return hourY + minuteY + fullTimelineHeight * dayOffset
     }
 
+    /// 將 Y 座標轉換為日期
+    /// - Parameter y: Y 座標位置
+    /// - Returns: 對應的日期
     public func yToDate(_ y: CGFloat) -> Date {
         let timeValue = y - style.verticalInset
         var hour = Int(timeValue / style.verticalDiff)
@@ -617,10 +709,18 @@ public final class TimelineView: UIView {
         return newDate!
     }
 
+    /// 從日期中提取指定的日曆組件
+    /// - Parameters:
+    ///   - component: 要提取的組件類型（如 .hour, .minute）
+    ///   - date: 日期
+    /// - Returns: 組件的值
     public func component(component: Calendar.Component, from date: Date) -> Int {
         return calendar.component(component, from: date)
     }
   
+    /// 獲取日期的時間區間（用於事件對齊）
+    /// - Parameter date: 日期
+    /// - Returns: 對齊後的時間區間
     private func getDateInterval(date: Date) -> ClosedRange<Date> {
         let earliestEventMintues = component(component: .minute, from: date)
         let splitMinuteInterval = style.splitMinuteInterval
