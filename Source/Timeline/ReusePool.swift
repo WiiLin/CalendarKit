@@ -1,7 +1,7 @@
 import UIKit
 
 final class ReusePool<T: UIView> {
-    private var storage: [T]
+    private(set) var storage: [T]
 
     init() {
         storage = [T]()
@@ -12,8 +12,8 @@ final class ReusePool<T: UIView> {
         storage.append(contentsOf: views)
     }
 
-    func dequeue() -> T {
-        guard !storage.isEmpty else { return T() }
-        return storage.removeLast()
+    func dequeue() -> (object:T, isNew: Bool) {
+        guard !storage.isEmpty else { return (T(), true) }
+        return (storage.removeLast(), false)
     }
 }

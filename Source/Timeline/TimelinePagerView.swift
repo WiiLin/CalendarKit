@@ -86,7 +86,8 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     }
 
     private func configure() {
-        let vc = configureTimelineController(date: Date())
+        // 初始頁面需要立即更新 layoutAttributes
+        let vc = configureTimelineController(date: Date(), shouldUpdateLayout: true)
         pagingViewController.setViewControllers([vc], direction: .forward, animated: false, completion: nil)
         pagingViewController.dataSource = self
         pagingViewController.delegate = self
@@ -128,7 +129,12 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
         }
     }
 
-    private func configureTimelineController(date: Date) -> TimelineContainerController {
+    /// 配置 TimelineController
+    /// - Parameters:
+    ///   - date: 要顯示的日期
+    ///   - shouldUpdateLayout: 是否立即更新 layoutAttributes（只有當前頁才需要）
+    /// - Returns: 配置好的 TimelineContainerController
+    private func configureTimelineController(date: Date, shouldUpdateLayout: Bool = false) -> TimelineContainerController {
         let controller = TimelineContainerController()
         updateStyleOfTimelineContainer(controller: controller)
         let timeline = controller.timeline
@@ -137,7 +143,10 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
         timeline.calendar = calendar
         timeline.date = date.dateOnly(calendar: calendar)
         controller.container.delegate = self
-        updateTimeline(timeline)
+        // 只有當前頁才立即更新 layoutAttributes，預加載頁稍後在 didMoveTo 時更新
+        if shouldUpdateLayout {
+            updateTimeline(timeline)
+        }
         return controller
     }
 
@@ -158,11 +167,11 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
         }
     }
 
+    /// 重新載入數據，只更新當前可見的 TimelineView
     public func reloadData() {
-        pagingViewController.children.forEach { controller in
-            if let controller = controller as? TimelineContainerController {
-                self.updateTimeline(controller.timeline)
-            }
+        // 只更新當前可見的 TimelineView，避免更新預加載頁
+        if let currentTimeline = currentTimeline {
+            updateTimeline(currentTimeline.timeline)
         }
     }
 
@@ -411,7 +420,8 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     public func move(from oldDate: Date, to newDate: Date) {
         let oldDate = oldDate.dateOnly(calendar: calendar)
         let newDate = newDate.dateOnly(calendar: calendar)
-        let newController = configureTimelineController(date: newDate)
+        // 創建新控制器時不立即更新 layoutAttributes，稍後在 completionHandler 中更新
+        let newController = configureTimelineController(date: newDate, shouldUpdateLayout: false)
 
         delegate?.timelinePager(timelinePager: self, willMoveTo: newDate)
 
@@ -427,6 +437,11 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
                                                              animated: false,
                                                              completion: nil)
               
+                // 在 didMoveTo 時才更新當前頁的 layoutAttributes
+                if let currentTimeline = self.currentTimeline {
+                    self.updateTimeline(currentTimeline.timeline)
+                }
+              
                 self.pagingViewController.viewControllers?.first?.view.setNeedsLayout()
                 self.scrollToFirstEventIfNeeded(animated: true)
                 self.delegate?.timelinePager(timelinePager: self, didMoveTo: newDate)
@@ -434,6 +449,8 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
         }
 
         if newDate < oldDate {
+            currentTimeline?.timeline.enqueueEventViews()
+            
             let leftToRight = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .leftToRight
             let direction: UIPageViewController.NavigationDirection = leftToRight ? .reverse : .forward
             pagingViewController.setViewControllers([newController],
@@ -441,6 +458,7 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
                                                     animated: true,
                                                     completion: completionHandler(_:))
         } else if newDate > oldDate {
+            currentTimeline?.timeline.enqueueEventViews()
             let leftToRight = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .leftToRight
             let direction: UIPageViewController.NavigationDirection = leftToRight ? .forward : .reverse
             pagingViewController.setViewControllers([newController],
@@ -455,7 +473,8 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     public func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
         guard let containerController = viewController as? TimelineContainerController else { return nil }
         let previousDate = calendar.date(byAdding: .day, value: -1, to: containerController.timeline.date)!
-        let vc = configureTimelineController(date: previousDate)
+        // 預加載頁不立即更新 layoutAttributes，稍後在 didMoveTo 時更新
+        let vc = configureTimelineController(date: previousDate, shouldUpdateLayout: false)
         let offset = (pageViewController.viewControllers?.first as? TimelineContainerController)?.container.contentOffset
         vc.pendingContentOffset = offset
         return vc
@@ -464,7 +483,8 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
     public func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
         guard let containerController = viewController as? TimelineContainerController else { return nil }
         let nextDate = calendar.date(byAdding: .day, value: 1, to: containerController.timeline.date)!
-        let vc = configureTimelineController(date: nextDate)
+        // 預加載頁不立即更新 layoutAttributes，稍後在 didMoveTo 時更新
+        let vc = configureTimelineController(date: nextDate, shouldUpdateLayout: false)
         let offset = (pageViewController.viewControllers?.first as? TimelineContainerController)?.container.contentOffset
         vc.pendingContentOffset = offset
         return vc
@@ -478,8 +498,13 @@ public final class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScr
             return
         }
         if let timelineContainerController = pageViewController.viewControllers?.first as? TimelineContainerController {
+            (previousViewControllers as? [TimelineContainerController])?.forEach { vc in
+                vc.timeline.enqueueEventViews()
+            }
             let selectedDate = timelineContainerController.timeline.date
             delegate?.timelinePager(timelinePager: self, willMoveTo: selectedDate)
+            // 在 didMoveTo 時才更新當前頁的 layoutAttributes
+            updateTimeline(timelineContainerController.timeline)
             state?.client(client: self, didMoveTo: selectedDate)
             scrollToFirstEventIfNeeded(animated: true)
             delegate?.timelinePager(timelinePager: self, didMoveTo: selectedDate)

@@ -39,25 +39,43 @@ public final class TimelineView: UIView {
     /// 所有事件的佈局屬性，設置時會自動分離全天事件和一般事件，並重新計算佈局
     public var layoutAttributes: [EventLayoutAttributes] {
         set {
-            // 更新佈局屬性，將全天事件和一般事件分開處理
-            allDayLayoutAttributes.removeAll()
-            regularLayoutAttributes.removeAll()
+            let totalStartTime = CFAbsoluteTimeGetCurrent()
+            print("set layoutAttributes count = \(layoutAttributes.count), date = \(date)")
+            // 快速分離 allDay 和 regular 事件，使用 reserveCapacity 預分配容量
+            // 單次遍歷分離，避免重複計算
+            allDayLayoutAttributes.removeAll(keepingCapacity: true)
+            regularLayoutAttributes.removeAll(keepingCapacity: true)
+            allDayLayoutAttributes.reserveCapacity(newValue.count)
+            regularLayoutAttributes.reserveCapacity(newValue.count)
+            
             for anEventLayoutAttribute in newValue {
-                let eventDescriptor = anEventLayoutAttribute.descriptor
-                if eventDescriptor.isAllDay {
+                if anEventLayoutAttribute.descriptor.isAllDay {
                     allDayLayoutAttributes.append(anEventLayoutAttribute)
                 } else {
                     regularLayoutAttributes.append(anEventLayoutAttribute)
                 }
             }
-      
-            recalculateEventLayout()
-            prepareEventViews()
-            allDayView.events = allDayLayoutAttributes.map { $0.descriptor }
-            allDayView.isHidden = (allDayLayoutAttributes.count == 0 && style.groupCount <= 1)
-            allDayView.scrollToBottom()
-      
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            UIView.performWithoutAnimation {
+                print("⏱️===========================================================")
+                recalculateEventLayout()
+                prepareEventViews()
+                layoutEvents()
+                if (allDayLayoutAttributes.count == 0 && style.groupCount <= 1) {
+                    allDayView.isHidden = true
+                } else {
+                    allDayView.isHidden = false
+                    allDayView.events = allDayLayoutAttributes.map { $0.descriptor }
+                    allDayView.scrollToBottom()
+                }
+            }
             setNeedsLayout()
+            CATransaction.commit()
+            
+            let totalElapsedTime = (CFAbsoluteTimeGetCurrent() - totalStartTime) * 1000 // 轉換為毫秒
+            print("⏱️ layoutAttributes setter 總耗時: \(String(format: "%.3f", totalElapsedTime))ms")
+            print("⏱️===========================================================")
         }
         get {
             return allDayLayoutAttributes + regularLayoutAttributes
@@ -65,7 +83,13 @@ public final class TimelineView: UIView {
     }
 
     /// 事件視圖重用池，用於重用 EventView 實例以提升效能
-    private var pool = ReusePool<EventView>()
+    /// 所有 TimelineView 實例共用同一個 pool，以提升資源利用效率
+    private static let sharedPool = ReusePool<EventView>()
+    
+    /// 當前實例使用的 pool（指向共享的 pool）
+    private var pool: ReusePool<EventView> {
+        return TimelineView.sharedPool
+    }
 
     /// 第一個事件的 Y 座標位置，用於自動滾動到第一個事件
     public var firstEventYPosition: CGFloat? {
@@ -464,8 +488,9 @@ public final class TimelineView: UIView {
         super.layoutSubviews()
         // 如果正在拖動，不重新計算佈局
         if (superview as? TimelineContainer)?.isDragging ?? false { return }
-        recalculateEventLayout()
-        layoutEvents()
+        // 注意：recalculateEventLayout() 和 prepareEventViews() 已在 layoutAttributes setter 中調用
+        // 這裡只需要根據已計算好的 frame 來佈局視圖
+//        layoutEvents()
         layoutNowLine()
         layoutAllDayEvents()
     }
@@ -490,7 +515,8 @@ public final class TimelineView: UIView {
     /// 佈局所有事件視圖
     private func layoutEvents() {
         if eventViews.isEmpty { return }
-    
+        
+        let startTime = CFAbsoluteTimeGetCurrent()
         for (idx, attributes) in regularLayoutAttributes.enumerated() {
             let descriptor = attributes.descriptor
             let eventView = eventViews[idx]
@@ -512,6 +538,8 @@ public final class TimelineView: UIView {
                                      height: attributes.frame.height - style.eventGap - (heightPadding * 2))
             eventView.updateWithDescriptor(event: descriptor)
         }
+        let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000 // 轉換為毫秒
+        print("⏱️ layoutEvents 耗時: \(String(format: "%.3f", elapsedTime))ms, eventViews count = \(eventViews.count)")
     }
   
     /// 佈局全天事件視圖（確保在最前面）
@@ -556,107 +584,148 @@ public final class TimelineView: UIView {
     /// 重新計算事件的佈局（只處理非全天事件）
     /// 將重疊的事件分組，並計算每個事件的 frame
     private func recalculateEventLayout() {
-        // 只處理非全天事件，按開始時間排序
-        let sortedEvents = regularLayoutAttributes.sorted { attr1, attr2 -> Bool in
-            let start1 = attr1.descriptor.startDate
-            let start2 = attr2.descriptor.startDate
-            return start1 < start2
-        }
+        let startTime = CFAbsoluteTimeGetCurrent()
+        // 過濾並排序事件，只處理非全天事件
+        let sortedEvents = regularLayoutAttributes.filter { !$0.descriptor.isAllDay }
+            .sorted { $0.descriptor.startDate < $1.descriptor.startDate }
 
-        // 將重疊的事件分組（同一組的事件會並排顯示）
-        var groupsOfEvents = [[EventLayoutAttributes]]() // 整理好一包一包的 重疊時間得event
-//    var overlappingEvents = [EventLayoutAttributes]() //重疊時間得event
-    
-        forLoop: for event in sortedEvents {
-            if event.descriptor.isAllDay {
-                continue
-            }
+        guard !sortedEvents.isEmpty else {
+            let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+            print("⏱️ recalculateEventLayout 耗時: \(String(format: "%.3f", elapsedTime))ms, layoutAttributes count = \(layoutAttributes.count)")
+            return
+        }
+        
+        // 使用字典按 group 分組，減少需要檢查的事件數量
+        var eventsByGroup: [Int: [EventLayoutAttributes]] = [:]
+        for event in sortedEvents {
             let eventGroup = event.descriptor.group
-            if groupsOfEvents.isEmpty {
-                groupsOfEvents.append([event])
-                continue forLoop
+            if eventsByGroup[eventGroup] == nil {
+                eventsByGroup[eventGroup] = []
             }
-        subForLoop: for index in 0 ..< groupsOfEvents.count {
-                if groupsOfEvents[index].first?.descriptor.group != eventGroup {
-                    continue subForLoop
-                }
-                let longestEvent = groupsOfEvents[index].sorted { attr1, attr2 -> Bool in
-                    var period = attr1.descriptor.datePeriod
-                    let period1 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
-
-                    period = attr2.descriptor.datePeriod
-                    let period2 = calendar.dateComponents([.second], from: period.lowerBound, to: period.upperBound).second!
-
-                    return period1 > period2
-                }
-                .first!
+            eventsByGroup[eventGroup]?.append(event)
+        }
+        
+        // 為每個 group 計算重疊組
+        var groupsOfEvents: [[EventLayoutAttributes]] = []
+        
+        for (_, groupEvents) in eventsByGroup {
+            // 為當前 group 內的事件分組
+            var groupOverlappingEvents: [[EventLayoutAttributes]] = []
+            // 緩存每個組的最長事件，避免重複計算
+            var longestEventCache: [Int: EventLayoutAttributes] = [:]
             
-                let overlap = TimelineView.overlap(date: longestEvent.descriptor.datePeriod, dates: [event.descriptor.datePeriod], eventGap: style.eventGap)
-                if overlap {
-                    groupsOfEvents[index].append(event)
-                    continue forLoop
+            for event in groupEvents {
+                var foundGroup = false
+                let eventPeriod = event.descriptor.datePeriod
+                
+                // 尋找重疊的組
+                for groupIndex in 0..<groupOverlappingEvents.count {
+                    let group = groupOverlappingEvents[groupIndex]
+                    
+                    // 使用緩存的最長事件，避免重複計算
+                    let longestEvent: EventLayoutAttributes = {
+                        if let cached = longestEventCache[groupIndex] {
+                            return cached
+                        }
+                        // 計算最長事件並緩存
+                        let longest = group.max(by: { attr1, attr2 in
+                            let period1 = calendar.dateComponents([.second], from: attr1.descriptor.datePeriod.lowerBound, to: attr1.descriptor.datePeriod.upperBound).second ?? 0
+                            let period2 = calendar.dateComponents([.second], from: attr2.descriptor.datePeriod.lowerBound, to: attr2.descriptor.datePeriod.upperBound).second ?? 0
+                            return period1 < period2
+                        }) ?? group[0]
+                        longestEventCache[groupIndex] = longest
+                        return longest
+                    }()
+                    
+                    if TimelineView.overlap(date: longestEvent.descriptor.datePeriod, dates: [eventPeriod], eventGap: style.eventGap) {
+                        groupOverlappingEvents[groupIndex].append(event)
+                        // 如果新事件比最長事件還長，更新緩存
+                        let newEventPeriod = calendar.dateComponents([.second], from: eventPeriod.lowerBound, to: eventPeriod.upperBound).second ?? 0
+                        let longestEventPeriod = calendar.dateComponents([.second], from: longestEvent.descriptor.datePeriod.lowerBound, to: longestEvent.descriptor.datePeriod.upperBound).second ?? 0
+                        if newEventPeriod > longestEventPeriod {
+                            longestEventCache[groupIndex] = event
+                        }
+                        foundGroup = true
+                        break
+                    }
+                }
+                
+                if !foundGroup {
+                    let newGroupIndex = groupOverlappingEvents.count
+                    groupOverlappingEvents.append([event])
+                    longestEventCache[newGroupIndex] = event
                 }
             }
-            groupsOfEvents.append([event])
+            
+            groupsOfEvents.append(contentsOf: groupOverlappingEvents)
         }
 
-
-        for (index, overlappingEvents) in groupsOfEvents.enumerated() {
+        // 計算並設置 frame
+        for overlappingEvents in groupsOfEvents {
+            guard let firstEvent = overlappingEvents.first else { continue }
             let totalCount = CGFloat(overlappingEvents.count)
+            let groupWidth = style.groupWidth(index: firstEvent.descriptor.group)
+            let groupX = style.groupX(index: firstEvent.descriptor.group)
+            let equalWidth = groupWidth / totalCount
+            
             for (index, event) in overlappingEvents.enumerated() {
-                let groupWidth: CGFloat = style.groupWidth(index: event.descriptor.group)
+                let floatIndex = CGFloat(index)
                 let startY = dateToY(event.descriptor.datePeriod.lowerBound)
                 let endY = dateToY(event.descriptor.datePeriod.upperBound)
-                print("⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️")
-                print("group = \(event.descriptor.group)")
-
-                let floatIndex = CGFloat(index)
-                print("floatIndex = \(floatIndex)")
-                print("groupWidth = \(groupWidth)")
-                let groupX = style.groupX(index: event.descriptor.group)
-                print("groupX = \(groupX)")
-
                 let x = groupX + style.leadingInset + floatIndex / totalCount * groupWidth
-                print("x = \(x)")
-                let equalWidth = groupWidth / totalCount
-                print("equalWidth \(equalWidth)")
-                print("🤔 equalWidth \(calendarWidth) / \(totalCount) / \(style.groupCount) = \(equalWidth) ？?? \(bounds.width)")
+                
                 event.frame = CGRect(x: x, y: startY, width: equalWidth, height: endY - startY)
-                print("event.frame \(event.frame)")
-                print("⚙️⚙️⚙️⚙️⚙️⚙️⚙️⚙️\n\n")
-
             }
         }
+        
+        let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000 // 轉換為毫秒
+        print("⏱️ recalculateEventLayout 耗時: \(String(format: "%.3f", elapsedTime))ms, layoutAttributes count = \(layoutAttributes.count)")
     }
 
     /// 準備事件視圖（重用池機制）
     /// 將舊視圖回收到池中，然後從池中取出或創建新視圖
     private func prepareEventViews() {
-        let beforeEnqueueCount = pool.storage.count
-        let oldEventViewsCount = eventViews.count
-        // 將舊視圖回收到重用池
-        pool.enqueue(views: eventViews)
-        let afterEnqueueCount = pool.storage.count
-        eventViews.removeAll()
-        let beforeDequeueCount = pool.storage.count
-        let regularLayoutAttributesCount = regularLayoutAttributes.count
-        // 從重用池中取出視圖（如果池為空則創建新的）
-        for _ in regularLayoutAttributes {
-            let newView = pool.dequeue()
-            if newView.superview == nil {
-                addSubview(newView)
+
+        let startTime = CFAbsoluteTimeGetCurrent()
+            enqueueEventViews()
+
+            var reusableViews: [EventView] = []
+            var newViews: [EventView] = []
+            let neededCount = regularLayoutAttributes.count
+
+            // 批量從池中取出
+            for _ in 0..<neededCount {
+                let tuple = pool.dequeue()
+                if tuple.isNew {
+                    newViews.append(tuple.object)
+                } else {
+                    reusableViews.append(tuple.object)
+                }
             }
-            eventViews.append(newView)
-        }
-        let afterDequeueCount = pool.storage.count
-        print("🔄 prepareEventViews: oldEventViews=\(oldEventViewsCount), regularLayoutAttributes=\(regularLayoutAttributesCount), pool: beforeEnqueue=\(beforeEnqueueCount) → afterEnqueue=\(afterEnqueueCount) → beforeDequeue=\(beforeDequeueCount) → afterDequeue=\(afterDequeueCount)")
+
+            // 關鍵：一次性添加所有 view
+            let allViews = reusableViews + newViews
+            allViews.forEach { $0.frame = .zero } // 可選：預設 frame
+            self.addSubviews(allViews) // 使用批量添加擴展
+
+            eventViews = allViews
+
+            let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+            print("⏱️ prepareEventViews 耗時: \(String(format: "%.3f", elapsedTime))ms, new: \(newViews.count), reuse: \(reusableViews.count)")
+
     }
 
     /// 準備重用視圖（清理當前視圖並回收到池中）
     public func prepareForReuse() {
+        // 先移除視圖的 superview，然後回收到重用池
+        enqueueEventViews()
+        setNeedsDisplay()
+    }
+    
+    func enqueueEventViews() {
+        eventViews.forEach { $0.removeFromSuperview() }
         pool.enqueue(views: eventViews)
         eventViews.removeAll()
-        setNeedsDisplay()
     }
 
     // MARK: - Helpers
@@ -729,5 +798,11 @@ public final class TimelineView: UIView {
         let beginningRange = calendar.date(byAdding: .minute, value: -(earliestEventMintues - minuteRange), to: date)!
         let endRange = calendar.date(byAdding: .minute, value: splitMinuteInterval, to: beginningRange)!
         return beginningRange ... endRange
+    }
+}
+
+extension UIView {
+    func addSubviews(_ views: [UIView]) {
+        views.forEach { addSubview($0) }
     }
 }
