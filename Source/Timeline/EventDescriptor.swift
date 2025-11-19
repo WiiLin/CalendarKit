@@ -18,5 +18,5 @@ public protocol EventDescriptor: AnyObject {
     var group: Int { get }
     var borderColor: UIColor { get set }
     var borderWidth: CGFloat { get set }
-    var image: UIImage? { get set }
+    var images: [UIImage] { get set }
 }

@@ -1,7 +1,7 @@
 import UIKit
 
 public final class Event: EventDescriptor {
-    public var image: UIImage?
+    public var images: [UIImage] = []
     
     public var group: Int = 0
     

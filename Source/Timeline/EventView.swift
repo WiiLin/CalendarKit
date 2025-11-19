@@ -1,6 +1,7 @@
 import UIKit
 
 open class EventView: UIView {
+    static let imageSize = CGSize(width: 20, height: 20)
     public var descriptor: EventDescriptor?
     public var color = SystemColors.label
 
@@ -18,10 +19,13 @@ open class EventView: UIView {
         return view
     }()
     
-    public lazy var imageView: UIImageView = {
-        let imageView = UIImageView()
-        return imageView
+    lazy var imagesStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 3
+        return stackView
     }()
+    
 
     /// Resize Handle views showing up when editing the event.
     /// The top handle has a tag of `0` and the bottom has a tag of `1`
@@ -41,14 +45,23 @@ open class EventView: UIView {
         clipsToBounds = false
         color = tintColor
         addSubview(textView)
-        addSubview(imageView)
+        addSubview(imagesStackView)
     
+
+        imagesStackView.translatesAutoresizingMaskIntoConstraints = false
+        let padding: CGFloat = 3
+        NSLayoutConstraint.activate([
+            imagesStackView.topAnchor.constraint(equalTo: topAnchor, constant: padding),
+            imagesStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding)
+        ])
+        
         for (idx, handle) in eventResizeHandles.enumerated() {
             handle.tag = idx
             addSubview(handle)
         }
         layer.cornerRadius = 2
         clipsToBounds = true
+  
     }
 
     public func updateWithDescriptor(event: EventDescriptor) {
@@ -72,7 +85,17 @@ open class EventView: UIView {
             $0.isHidden = event.editedEvent == nil
         }
         drawsShadow = event.editedEvent != nil
-        imageView.image = event.image
+        imagesStackView.removeAllArrangedSubviews()
+        let imageViews = event.images.map {
+            let imageView = UIImageView(image: $0)
+            imageView.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                  imageView.widthAnchor.constraint(equalToConstant: EventView.imageSize.width),
+                  imageView.heightAnchor.constraint(equalToConstant: EventView.imageSize.height)
+              ])
+            return imageView
+        }
+        imagesStackView.addArrangedSubviews(imageViews)
         setNeedsDisplay()
         setNeedsLayout()
     }
@@ -132,16 +155,18 @@ open class EventView: UIView {
 
     override open func layoutSubviews() {
         super.layoutSubviews()
-        let imageWidth = 20.0
+        let imageWidth = Self.imageSize.width
         let padding = 3.0
         textView.frame = CGRect(x: bounds.minX + padding,
                                 y: bounds.minY,
                                 width: bounds.width - padding - imageWidth - padding,
                                 height: bounds.height)
-        imageView.frame = CGRect(x: bounds.maxX - imageWidth - padding,
-                                 y: bounds.minY + padding,
-                                 width: imageWidth,
-                                 height: imageWidth)
+        let imageCount = descriptor?.images.count ?? 0
+        let imagesStackViewHeight = CGFloat(imageCount) * imageWidth + CGFloat(imageCount - 1) * padding
+//        imagesStackView.frame = CGRect(x: bounds.maxX - imageWidth - padding,
+//                                 y: bounds.minY + padding,
+//                                 width: imageWidth,
+//                                       height: imagesStackViewHeight)
         
         if frame.minY < 0 {
             var textFrame = textView.frame
@@ -186,6 +211,25 @@ open class EventView: UIView {
             let dx = -spread
             let rect = bounds.insetBy(dx: dx, dy: dx)
             layer.shadowPath = UIBezierPath(rect: rect).cgPath
+        }
+    }
+}
+
+
+extension UIStackView {
+    func addArrangedSubviews(_ views: [UIView]) {
+        views.forEach { addArrangedSubview($0) }
+    }
+
+    func removeFully(view: UIView) {
+        removeArrangedSubview(view)
+        view.removeFromSuperview()
+    }
+
+    /// 移除所有子視圖
+    func removeFullyAllArrangedSubviews() {
+        for view in arrangedSubviews {
+            removeFully(view: view)
         }
     }
 }
