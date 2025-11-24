@@ -89,6 +89,15 @@ public struct SwipeLabelStyle {
     public init() {}
 }
 
+public struct TimelineGroup {
+    let name: NSAttributedString
+    let width: CGFloat
+    public init(name: NSAttributedString, width: CGFloat) {
+        self.name = name
+        self.width = width
+    }
+}
+
 public struct TimelineStyle {
     public var allDayStyle = AllDayViewStyle()
     public var timeIndicator = CurrentTimeIndicatorStyle()
@@ -103,7 +112,7 @@ public struct TimelineStyle {
     public var verticalInset: CGFloat = 10
     public var leadingInset: CGFloat = 53
     public var eventGap: CGFloat = 0
-    public var group: [(name: String, width: CGFloat)] = []
+    public var group: [TimelineGroup] = []
     var groupCount: Int {
         return group.count
     }

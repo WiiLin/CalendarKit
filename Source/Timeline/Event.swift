@@ -84,15 +84,15 @@ public extension Event {
     }
 
 
-    static func updateGroupWidthIfNeed(group: [(name: String, width: CGFloat)], totalWidth: CGFloat) -> [(name: String, width: CGFloat)] {
+    static func updateGroupWidthIfNeed(group: [TimelineGroup], totalWidth: CGFloat) -> [TimelineGroup] {
         var group = group
 
         let currentTotalWidth = group.reduce(0) { $0 + $1.width }
 
         if currentTotalWidth < totalWidth {
             let scaleFactor = totalWidth / currentTotalWidth
-            group = group.map { (name, width) in
-                return (name, width * scaleFactor)
+            group = group.map { group in
+                return .init(name: group.name, width: group.width * scaleFactor)
             }
         }
 
