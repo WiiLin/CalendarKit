@@ -45,20 +45,8 @@ class GroupNameView: UIView {
             label.textAlignment = .center
             label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
             let text = newStyle.group[index].name
-            let texts = text.split(separator: "\n")
-            if texts.count == 2 {
-                let attribute = NSMutableAttributedString(string: text)
-                let ranges = attribute.string.ranges(of: texts.last!)
-                if let first = ranges.first {
-                    let nsRange = NSRange(first, in: attribute.string)
-                    attribute.addAttributes([.font: UIFont.systemFont(ofSize: 11, weight: .regular)], range: nsRange)
-                    label.attributedText = attribute
-                } else {
-                    label.text = text
-                }
-            } else {
-                label.text = text
-            }
+            label.attributedText = text
+           
             addSubview(label)
             currentX += newStyle.groupWidth(index: index)
         }
