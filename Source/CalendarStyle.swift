@@ -99,19 +99,33 @@ public struct TimelineGroup {
 }
 
 public struct TimelineStyle {
+    /// 全天事件區塊的樣式
     public var allDayStyle = AllDayViewStyle()
+    /// 當前時間指示線的樣式（紅線）
     public var timeIndicator = CurrentTimeIndicatorStyle()
+    /// 左側時間文字的顏色（如 10 AM、11 AM）
     public var timeColor = SystemColors.secondaryLabel
+    /// 每小時之間水平分隔線的顏色
     public var separatorColor = SystemColors.systemSeparator
+    /// Timeline 的背景顏色
     public var backgroundColor = SystemColors.systemBackground
+    /// 左側時間文字的字體
     public var font = UIFont.boldSystemFont(ofSize: 11)
+    /// 時間顯示格式（12小時制、24小時制、系統設定、或自訂時段）
     public var dateStyle: DateStyle = .system
+    /// 拖曳編輯事件時的最小時長（分鐘）
     public var minimumEventDurationInMinutesWhileEditing: Int = 30
+    /// 拖曳時的時間吸附間隔（分鐘），例如 15 表示吸附到 :00、:15、:30、:45
     public var splitMinuteInterval: Int = 15
+    /// 每小時的高度（像素），影響 timeline 的垂直縮放比例
     public var verticalDiff: CGFloat = 100
+    /// Timeline 頂部的內邊距
     public var verticalInset: CGFloat = 10
+    /// 左側時間標籤區域的寬度，事件從這個位置之後開始繪製
     public var leadingInset: CGFloat = 53
+    /// 相鄰事件之間的間距（像素）
     public var eventGap: CGFloat = 0
+    /// 分組資訊（多人行事曆時，每個人一個 group）
     public var group: [TimelineGroup] = []
     var groupCount: Int {
         return group.count

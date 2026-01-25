@@ -671,9 +671,16 @@ public final class TimelineView: UIView {
             for (index, event) in overlappingEvents.enumerated() {
                 let floatIndex = CGFloat(index)
                 let startY = dateToY(event.descriptor.datePeriod.lowerBound)
-                let endY = dateToY(event.descriptor.datePeriod.upperBound)
-                let x = groupX + style.leadingInset + floatIndex / totalCount * groupWidth
+                var endY = dateToY(event.descriptor.datePeriod.upperBound)
                 
+                // 跨日 event 的 endY 會小於 startY，clamp 到 timeline 底部
+                //https://redmine.ezpretty.com.tw/issues/24342
+                if endY < startY {
+                    endY = CGFloat(style.dateStyle.count) * style.verticalDiff + style.verticalInset
+                }
+                
+                let x = groupX + style.leadingInset + floatIndex / totalCount * groupWidth
+
                 event.frame = CGRect(x: x, y: startY, width: equalWidth, height: endY - startY)
             }
         }
