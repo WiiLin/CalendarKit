@@ -86,14 +86,6 @@ class LockTimelineView: UIView {
 
         var hourToRemoveIndex = -1
 
-        var accentedHour = -1
-        var accentedMinute = -1
-
-        if let accentedDate = timelineView.accentedDate {
-            accentedHour = timelineView.snappingBehavior.accentedHour(for: accentedDate)
-            accentedMinute = timelineView.snappingBehavior.accentedMinute(for: accentedDate)
-        }
-
         if timelineView.isToday {
             let minute = timelineView.component(component: .minute, from: timelineView.currentTime)
             let hour = timelineView.component(component: .hour, from: timelineView.currentTime)
@@ -164,31 +156,7 @@ class LockTimelineView: UIView {
             }()
       
             let timeString = NSString(string: time)
-            print("fake hour timeString \(timeString) \(timeRect)")
             timeString.draw(in: timeRect, withAttributes: attributes)
-      
-            if accentedMinute == 0 {
-                continue
-            }
-      
-            if hour == accentedHour {
-                var x: CGFloat
-                if UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft {
-                    x = bounds.width - (timelineView.style.leadingInset + 7)
-                } else {
-                    x = 2
-                }
-              
-                let timeRect = CGRect(x: x,
-                                      y: hourFloat * timelineView.style.verticalDiff + timelineView.style.verticalInset - 7 + timelineView.style.verticalDiff * (CGFloat(accentedMinute) / 60),
-                                      width: timelineView.style.leadingInset - 8,
-                                      height: fontSize + 2)
-              
-                let timeString = NSString(string: ":\(accentedMinute)")
-              
-                print("accented timeString \(timeString)")
-                timeString.draw(in: timeRect, withAttributes: attributes)
-            }
         }
     }
 }

@@ -9,7 +9,6 @@ public protocol DayViewDelegate: AnyObject {
     func dayViewDidTransitionCancel(dayView: DayView)
     func dayView(dayView: DayView, willMoveTo date: Date)
     func dayView(dayView: DayView, didMoveTo date: Date)
-    func dayView(dayView: DayView, didUpdate event: EventDescriptor)
 }
 
 public class DayView: UIView, TimelinePagerViewDelegate {
@@ -103,10 +102,6 @@ public class DayView: UIView, TimelinePagerViewDelegate {
         timelinePagerView.updateStyle(style.timeline)
     }
 
-    public func timelinePanGestureRequire(toFail gesture: UIGestureRecognizer) {
-        timelinePagerView.timelinePanGestureRequire(toFail: gesture)
-    }
-
     public func scrollTo(hour24: Float, animated: Bool = true) {
         timelinePagerView.scrollTo(hour24: hour24, animated: animated)
     }
@@ -136,18 +131,6 @@ public class DayView: UIView, TimelinePagerViewDelegate {
     public func transitionToHorizontalSizeClass(_ sizeClass: UIUserInterfaceSizeClass) {
         dayHeaderView.transitionToHorizontalSizeClass(sizeClass)
         updateStyle(style)
-    }
-
-    public func create(event: EventDescriptor, animated: Bool = false) {
-        timelinePagerView.create(event: event, animated: animated)
-    }
-
-    public func beginEditing(event: EventDescriptor, animated: Bool = false) {
-        timelinePagerView.beginEditing(event: event, animated: animated)
-    }
-  
-    public func endEventEditing() {
-        timelinePagerView.endEventEditing()
     }
 
     // MARK: TimelinePagerViewDelegate
@@ -182,9 +165,5 @@ public class DayView: UIView, TimelinePagerViewDelegate {
 
     public func timelinePager(timelinePager: TimelinePagerView, didTapTimelineAt date: Date) {
         delegate?.dayView(dayView: self, didTapTimelineAt: date)
-    }
-
-    public func timelinePager(timelinePager: TimelinePagerView, didUpdate event: EventDescriptor) {
-        delegate?.dayView(dayView: self, didUpdate: event)
     }
 }

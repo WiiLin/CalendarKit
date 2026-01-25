@@ -91,20 +91,4 @@ open class DayViewController: UIViewController, EventDataSource, DayViewDelegate
     open func dayView(dayView: DayView, didMoveTo date: Date) {}
 
     open func dayView(dayView: DayView, didLongPressTimelineAt date: Date) {}
-
-    open func dayView(dayView: DayView, didUpdate event: EventDescriptor) {}
-  
-    // MARK: - Editing
-  
-    open func create(event: EventDescriptor, animated: Bool = false) {
-        dayView.create(event: event, animated: animated)
-    }
-
-    open func beginEditing(event: EventDescriptor, animated: Bool = false) {
-        dayView.beginEditing(event: event, animated: animated)
-    }
-  
-    open func endEventEditing() {
-        dayView.endEventEditing()
-    }
 }

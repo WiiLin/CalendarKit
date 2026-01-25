@@ -113,10 +113,6 @@ public struct TimelineStyle {
     public var font = UIFont.boldSystemFont(ofSize: 11)
     /// 時間顯示格式（12小時制、24小時制、系統設定、或自訂時段）
     public var dateStyle: DateStyle = .system
-    /// 拖曳編輯事件時的最小時長（分鐘）
-    public var minimumEventDurationInMinutesWhileEditing: Int = 30
-    /// 拖曳時的時間吸附間隔（分鐘），例如 15 表示吸附到 :00、:15、:30、:45
-    public var splitMinuteInterval: Int = 15
     /// 每小時的高度（像素），影響 timeline 的垂直縮放比例
     public var verticalDiff: CGFloat = 100
     /// Timeline 頂部的內邊距

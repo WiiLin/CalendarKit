@@ -167,19 +167,12 @@ public final class TimelineView: UIView {
     /// 使用的日曆系統，設置時會更新相關行為
     public var calendar: Calendar = .autoupdatingCurrent {
         didSet {
-            snappingBehavior = snappingBehaviorType.init(calendar)
             nowLine.calendar = calendar
             regenerateTimeStrings()
             setNeedsLayout()
         }
     }
   
-    /// 事件編輯時的對齊行為類型（例如：對齊到 15 分鐘間隔）
-    // TODO: Make a public API
-    public var snappingBehaviorType: EventEditingSnappingBehavior.Type = SnapTo15MinuteIntervals.self
-    /// 事件編輯時的對齊行為實例
-    lazy var snappingBehavior: EventEditingSnappingBehavior = snappingBehaviorType.init(calendar)
-
     /// 時間標籤字串陣列（用於顯示在左側）
     public var times: [String] {
         switch style.dateStyle {
@@ -345,21 +338,10 @@ public final class TimelineView: UIView {
   
     // MARK: - Background Pattern
 
-    /// 需要強調顯示的日期（用於繪製特殊標記）
-    public var accentedDate: Date?
-
     override public func draw(_ rect: CGRect) {
         super.draw(rect)
 
         var hourToRemoveIndex = -1
-
-        var accentedHour = -1
-        var accentedMinute = -1
-
-        if let accentedDate = accentedDate {
-            accentedHour = snappingBehavior.accentedHour(for: accentedDate)
-            accentedMinute = snappingBehavior.accentedMinute(for: accentedDate)
-        }
 
         if isToday {
             let minute = component(component: .minute, from: currentTime)
@@ -458,26 +440,6 @@ public final class TimelineView: UIView {
     
             let timeString = NSString(string: time)
             timeString.draw(in: timeRect, withAttributes: attributes)
-    
-            if accentedMinute == 0 {
-                continue
-            }
-    
-            if hour == accentedHour {
-                var x: CGFloat
-                if UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft {
-                    x = bounds.width - (style.leadingInset + 7)
-                } else {
-                    x = 2
-                }
-            
-                let timeRect = CGRect(x: x, y: hourFloat * style.verticalDiff + style.verticalInset - 7 + style.verticalDiff * (CGFloat(accentedMinute) / 60),
-                                      width: style.leadingInset - 8, height: fontSize + 2)
-            
-                let timeString = NSString(string: ":\(accentedMinute)")
-            
-                timeString.draw(in: timeRect, withAttributes: attributes)
-            }
         }
     }
   
@@ -486,11 +448,8 @@ public final class TimelineView: UIView {
     /// 當視圖需要重新佈局時調用
     override public func layoutSubviews() {
         super.layoutSubviews()
-        // 如果正在拖動，不重新計算佈局
-        if (superview as? TimelineContainer)?.isDragging ?? false { return }
         // 注意：recalculateEventLayout() 和 prepareEventViews() 已在 layoutAttributes setter 中調用
         // 這裡只需要根據已計算好的 frame 來佈局視圖
-//        layoutEvents()
         layoutNowLine()
         layoutAllDayEvents()
     }
@@ -794,18 +753,6 @@ public final class TimelineView: UIView {
         return calendar.component(component, from: date)
     }
   
-    /// 獲取日期的時間區間（用於事件對齊）
-    /// - Parameter date: 日期
-    /// - Returns: 對齊後的時間區間
-    private func getDateInterval(date: Date) -> ClosedRange<Date> {
-        let earliestEventMintues = component(component: .minute, from: date)
-        let splitMinuteInterval = style.splitMinuteInterval
-        let minute = component(component: .minute, from: date)
-        let minuteRange = (minute / splitMinuteInterval) * splitMinuteInterval
-        let beginningRange = calendar.date(byAdding: .minute, value: -(earliestEventMintues - minuteRange), to: date)!
-        let endRange = calendar.date(byAdding: .minute, value: splitMinuteInterval, to: beginningRange)!
-        return beginningRange ... endRange
-    }
 }
 
 extension UIView {
