@@ -29,7 +29,7 @@ public final class TimelineContainerController: UIViewController {
         super.viewDidLayoutSubviews()
         container.contentSize = timeline.frame.size
         lockContainer.isScrollEnabled = false
-        lockContainer.contentSize = .init(width: timeline.style.leadingInset - 8, height: timeline.frame.size.height)
+        lockContainer.contentSize = .init(width: timeline.style.leadingInset, height: timeline.frame.size.height)
         if let newOffset = pendingContentOffset {
             // Apply new offset only once the size has been determined
             if view.bounds != .zero {
@@ -64,7 +64,7 @@ extension TimelineContainerController {
         ])
         lockContainer.addSubview(fakeLeftTimelineView)
         fakeLeftTimelineView.backgroundColor = .white
-        fakeLeftTimelineView.frame = CGRect(x: 0, y: 0, width: timeline.style.contentWidth(), height: timeline.fullHeight)
+        fakeLeftTimelineView.frame = CGRect(x: 0, y: 0, width: timeline.style.leadingInset, height: timeline.fullHeight)
     }
 }
 
