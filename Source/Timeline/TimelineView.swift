@@ -553,7 +553,7 @@ public final class TimelineView: UIView {
             print("⏱️ recalculateEventLayout 耗時: \(String(format: "%.3f", elapsedTime))ms, layoutAttributes count = \(layoutAttributes.count)")
             return
         }
-        
+
         // 使用字典按 group 分組，減少需要檢查的事件數量
         var eventsByGroup: [Int: [EventLayoutAttributes]] = [:]
         for event in sortedEvents {
@@ -563,87 +563,104 @@ public final class TimelineView: UIView {
             }
             eventsByGroup[eventGroup]?.append(event)
         }
-        
-        // 為每個 group 計算重疊組
-        var groupsOfEvents: [[EventLayoutAttributes]] = []
-        
-        for (_, groupEvents) in eventsByGroup {
-            // 為當前 group 內的事件分組
-            var groupOverlappingEvents: [[EventLayoutAttributes]] = []
-            // 緩存每個組的最長事件，避免重複計算
-            var longestEventCache: [Int: EventLayoutAttributes] = [:]
-            
-            for event in groupEvents {
-                var foundGroup = false
-                let eventPeriod = event.descriptor.datePeriod
-                
-                // 尋找重疊的組
-                for groupIndex in 0..<groupOverlappingEvents.count {
-                    let group = groupOverlappingEvents[groupIndex]
-                    
-                    // 使用緩存的最長事件，避免重複計算
-                    let longestEvent: EventLayoutAttributes = {
-                        if let cached = longestEventCache[groupIndex] {
-                            return cached
+
+        // 處理每個 group
+        for (groupIndex, groupEvents) in eventsByGroup {
+            let groupWidth = style.groupWidth(index: groupIndex)
+            let groupX = style.groupX(index: groupIndex)
+
+            // 依開始時間排序
+            let sortedGroupEvents = groupEvents.sorted { $0.descriptor.startDate < $1.descriptor.startDate }
+
+            // 找出所有互相連接的事件群（透過重疊傳遞連接的事件）
+            var clusters: [[EventLayoutAttributes]] = []
+            var visited = Set<ObjectIdentifier>()
+
+            for event in sortedGroupEvents {
+                let eventId = ObjectIdentifier(event)
+                if visited.contains(eventId) { continue }
+
+                // BFS 找出所有連接的事件
+                var cluster: [EventLayoutAttributes] = []
+                var queue = [event]
+
+                while !queue.isEmpty {
+                    let current = queue.removeFirst()
+                    let currentId = ObjectIdentifier(current)
+                    if visited.contains(currentId) { continue }
+                    visited.insert(currentId)
+                    cluster.append(current)
+
+                    // 找出所有與 current 重疊的事件
+                    for other in sortedGroupEvents {
+                        let otherId = ObjectIdentifier(other)
+                        if visited.contains(otherId) { continue }
+                        if TimelineView.overlap(date: current.descriptor.datePeriod, dates: [other.descriptor.datePeriod], eventGap: style.eventGap) {
+                            queue.append(other)
                         }
-                        // 計算最長事件並緩存
-                        let longest = group.max(by: { attr1, attr2 in
-                            let period1 = calendar.dateComponents([.second], from: attr1.descriptor.datePeriod.lowerBound, to: attr1.descriptor.datePeriod.upperBound).second ?? 0
-                            let period2 = calendar.dateComponents([.second], from: attr2.descriptor.datePeriod.lowerBound, to: attr2.descriptor.datePeriod.upperBound).second ?? 0
-                            return period1 < period2
-                        }) ?? group[0]
-                        longestEventCache[groupIndex] = longest
-                        return longest
-                    }()
-                    
-                    if TimelineView.overlap(date: longestEvent.descriptor.datePeriod, dates: [eventPeriod], eventGap: style.eventGap) {
-                        groupOverlappingEvents[groupIndex].append(event)
-                        // 如果新事件比最長事件還長，更新緩存
-                        let newEventPeriod = calendar.dateComponents([.second], from: eventPeriod.lowerBound, to: eventPeriod.upperBound).second ?? 0
-                        let longestEventPeriod = calendar.dateComponents([.second], from: longestEvent.descriptor.datePeriod.lowerBound, to: longestEvent.descriptor.datePeriod.upperBound).second ?? 0
-                        if newEventPeriod > longestEventPeriod {
-                            longestEventCache[groupIndex] = event
-                        }
-                        foundGroup = true
-                        break
                     }
                 }
-                
-                if !foundGroup {
-                    let newGroupIndex = groupOverlappingEvents.count
-                    groupOverlappingEvents.append([event])
-                    longestEventCache[newGroupIndex] = event
+
+                if !cluster.isEmpty {
+                    clusters.append(cluster)
                 }
             }
-            
-            groupsOfEvents.append(contentsOf: groupOverlappingEvents)
-        }
 
-        // 計算並設置 frame
-        for overlappingEvents in groupsOfEvents {
-            guard let firstEvent = overlappingEvents.first else { continue }
-            let totalCount = CGFloat(overlappingEvents.count)
-            let groupWidth = style.groupWidth(index: firstEvent.descriptor.group)
-            let groupX = style.groupX(index: firstEvent.descriptor.group)
-            let equalWidth = groupWidth / totalCount
-            
-            for (index, event) in overlappingEvents.enumerated() {
-                let floatIndex = CGFloat(index)
-                let startY = dateToY(event.descriptor.datePeriod.lowerBound)
-                var endY = dateToY(event.descriptor.datePeriod.upperBound)
-                
-                // 跨日 event 的 endY 會小於 startY，clamp 到 timeline 底部
-                //https://redmine.ezpretty.com.tw/issues/24342
-                if endY < startY {
-                    endY = CGFloat(style.dateStyle.count) * style.verticalDiff + style.verticalInset
+            // 為每個 cluster 分配欄位
+            for cluster in clusters {
+                let sortedCluster = cluster.sorted { $0.descriptor.startDate < $1.descriptor.startDate }
+
+                // 欄位分配：每個欄位記錄最後一個事件的結束時間
+                var columns: [Date] = []
+                var eventColumns: [ObjectIdentifier: Int] = [:]
+
+                for event in sortedCluster {
+                    let eventStart = event.descriptor.datePeriod.lowerBound
+                    let eventEnd = event.descriptor.datePeriod.upperBound
+
+                    // 找第一個可用的欄位（該欄位的最後事件已經結束）
+                    var assignedColumn = -1
+                    for (colIndex, colEndTime) in columns.enumerated() {
+                        if colEndTime <= eventStart {
+                            assignedColumn = colIndex
+                            break
+                        }
+                    }
+
+                    if assignedColumn == -1 {
+                        // 沒有可用欄位，新增一個
+                        assignedColumn = columns.count
+                        columns.append(eventEnd)
+                    } else {
+                        // 更新欄位的結束時間
+                        columns[assignedColumn] = eventEnd
+                    }
+
+                    eventColumns[ObjectIdentifier(event)] = assignedColumn
                 }
-                
-                let x = groupX + style.leadingInset + floatIndex / totalCount * groupWidth
 
-                event.frame = CGRect(x: x, y: startY, width: equalWidth, height: endY - startY)
+                // 這個 cluster 內的所有事件使用相同的總欄位數
+                let totalColumns = CGFloat(columns.count)
+                let columnWidth = groupWidth / totalColumns
+
+                for event in sortedCluster {
+                    guard let column = eventColumns[ObjectIdentifier(event)] else { continue }
+
+                    let startY = dateToY(event.descriptor.datePeriod.lowerBound)
+                    var endY = dateToY(event.descriptor.datePeriod.upperBound)
+
+                    // 跨日 event 的 endY 會小於 startY，clamp 到 timeline 底部
+                    // https://redmine.ezpretty.com.tw/issues/24342
+                    if endY < startY {
+                        endY = CGFloat(style.dateStyle.count) * style.verticalDiff + style.verticalInset
+                    }
+
+                    let x = groupX + style.leadingInset + CGFloat(column) * columnWidth
+                    event.frame = CGRect(x: x, y: startY, width: columnWidth, height: endY - startY)
+                }
             }
         }
-        
+
         let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000 // 轉換為毫秒
         print("⏱️ recalculateEventLayout 耗時: \(String(format: "%.3f", elapsedTime))ms, layoutAttributes count = \(layoutAttributes.count)")
     }
