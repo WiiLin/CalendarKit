@@ -3,6 +3,7 @@ import UIKit
 public final class DayDateCell: UIView, DaySelectorItemProtocol {
     private let dateLabel = DateLabel()
     private let dayLabel = UILabel()
+    private let stackView = UIStackView()
 
     private var regularSizeClassFontSize: CGFloat = 16
 
@@ -26,6 +27,7 @@ public final class DayDateCell: UIView, DaySelectorItemProtocol {
         }
         set(value) {
             dateLabel.selected = value
+            stackView.spacing = value ? 5 : 3
         }
     }
 
@@ -47,7 +49,23 @@ public final class DayDateCell: UIView, DaySelectorItemProtocol {
 
     private func configure() {
         clipsToBounds = true
-        [dayLabel, dateLabel].forEach(addSubview(_:))
+        
+        stackView.axis = .horizontal
+        stackView.alignment = .center
+        stackView.spacing = 3
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        stackView.addArrangedSubview(dayLabel)
+        stackView.addArrangedSubview(dateLabel)
+        addSubview(stackView)
+        
+        NSLayoutConstraint.activate([
+            stackView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            stackView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            
+            dateLabel.widthAnchor.constraint(equalToConstant: 30),
+            dateLabel.heightAnchor.constraint(equalToConstant: 30)
+        ])
     }
 
     public func updateStyle(_ newStyle: DaySelectorStyle) {
@@ -88,18 +106,7 @@ public final class DayDateCell: UIView, DaySelectorItemProtocol {
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        dayLabel.sizeToFit()
-        dayLabel.center.y = center.y
-        let interItemSpacing: CGFloat = selected ? 5 : 3
-        dateLabel.center.y = center.y
-        dateLabel.frame.origin.x = dayLabel.frame.maxX + interItemSpacing
-        dateLabel.frame.size = CGSize(width: 30, height: 30)
-
-        let freeSpace = bounds.width - (dateLabel.frame.origin.x + dateLabel.frame.width)
-        let padding = freeSpace / 2
-        [dayLabel, dateLabel].forEach { label in
-            label.frame.origin.x += padding
-        }
+        // Auto Layout handles positioning now
     }
 
     override public func tintColorDidChange() {
