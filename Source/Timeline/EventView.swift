@@ -25,6 +25,12 @@ open class EventView: UIView {
         stackView.spacing = 3
         return stackView
     }()
+
+    public lazy var bottomRightLabel: UILabel = {
+        let label = UILabel()
+        label.textAlignment = .right
+        return label
+    }()
     
 
     override public init(frame: CGRect) {
@@ -42,13 +48,17 @@ open class EventView: UIView {
         color = tintColor
         addSubview(textView)
         addSubview(imagesStackView)
-    
+        addSubview(bottomRightLabel)
+
 
         imagesStackView.translatesAutoresizingMaskIntoConstraints = false
+        bottomRightLabel.translatesAutoresizingMaskIntoConstraints = false
         let padding: CGFloat = 3
         NSLayoutConstraint.activate([
             imagesStackView.topAnchor.constraint(equalTo: topAnchor, constant: padding),
-            imagesStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding)
+            imagesStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding),
+            bottomRightLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -padding),
+            bottomRightLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding)
         ])
         layer.cornerRadius = 2
         clipsToBounds = true
@@ -66,6 +76,9 @@ open class EventView: UIView {
         if let lineBreakMode = event.lineBreakMode {
             textView.textContainer.lineBreakMode = lineBreakMode
         }
+        bottomRightLabel.text = event.bottomRightText
+        bottomRightLabel.font = event.font
+        bottomRightLabel.textColor = event.textColor
         descriptor = event
         backgroundColor = event.backgroundColor
         layer.borderColor = event.borderColor.cgColor

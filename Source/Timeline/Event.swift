@@ -24,6 +24,7 @@ public final class Event: EventDescriptor {
 
     public var borderColor: UIColor = .clear
     public var borderWidth: CGFloat = 0
+    public var bottomRightText: String?
 
     public init() {}
 

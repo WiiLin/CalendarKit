@@ -16,4 +16,5 @@ public protocol EventDescriptor: AnyObject {
     var borderColor: UIColor { get set }
     var borderWidth: CGFloat { get set }
     var images: [UIImage] { get set }
+    var bottomRightText: String? { get }
 }
