@@ -123,10 +123,12 @@ open class EventView: UIView {
         super.layoutSubviews()
         let imageWidth = Self.imageSize.width
         let padding = 3.0
+        let hasBottomText = !(bottomRightLabel.text?.isEmpty ?? true)
+        let bottomReserved = hasBottomText ? bottomRightLabel.intrinsicContentSize.height + padding : 0
         textView.frame = CGRect(x: bounds.minX + padding,
                                 y: bounds.minY,
                                 width: bounds.width - padding - imageWidth - padding,
-                                height: bounds.height)
+                                height: bounds.height - bottomReserved)
 
         if frame.minY < 0 {
             var textFrame = textView.frame
