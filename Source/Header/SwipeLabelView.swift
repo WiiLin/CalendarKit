@@ -80,9 +80,9 @@ public final class SwipeLabelView: UIView, DayViewStateUpdating {
 
     /// 需要提示可點時，在日期文字後面附一個下箭頭
     private func decorated(_ text: String) -> NSAttributedString {
-        let attributed = NSMutableAttributedString(string: text,
-                                                   attributes: [.foregroundColor: style.textColor,
-                                                                .font: style.font])
+        let attributes: [NSAttributedString.Key: Any] = [.foregroundColor: style.textColor,
+                                                         .font: style.font]
+        let attributed = NSMutableAttributedString(string: text, attributes: attributes)
         guard style.showsTapIndicator, let image = UIImage(systemName: "chevron.down") else {
             return attributed
         }
