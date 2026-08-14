@@ -86,6 +86,8 @@ public struct DaySymbolsStyle {
 public struct SwipeLabelStyle {
     public var textColor = SystemColors.label
     public var font = UIFont.systemFont(ofSize: 15)
+    /// 日期文字後面加一個下箭頭，提示可點開整月日曆
+    public var showsTapIndicator = false
     public init() {}
 }
 
