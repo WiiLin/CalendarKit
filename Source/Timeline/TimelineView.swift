@@ -341,15 +341,20 @@ public final class TimelineView: UIView {
     override public func draw(_ rect: CGRect) {
         super.draw(rect)
 
-        var hourToRemoveIndex = -1
+        // 刻度可能比小時更密，位置一律由 minuteInterval 換算，不能再用 index 當小時
+        let tickHeight = style.verticalDiff * CGFloat(style.minuteInterval) / 60
+        let firstTickY = style.verticalInset + style.verticalDiff * CGFloat(style.firstTickMinuteOffset) / 60
 
+        // 與目前時間線重疊的刻度不畫文字，避免和紅線標籤疊在一起
+        var tickIndexToRemove = -1
         if isToday {
-            let minute = component(component: .minute, from: currentTime)
-            let hour = component(component: .hour, from: currentTime)
-            if minute > 39 {
-                hourToRemoveIndex = hour + 1
-            } else if minute < 21 {
-                hourToRemoveIndex = hour
+            let nowY = dateToY(currentTime)
+            let threshold = style.font.pointSize + 4
+            for index in 0 ..< times.count {
+                if abs(firstTickY + CGFloat(index) * tickHeight - nowY) < threshold {
+                    tickIndexToRemove = index
+                    break
+                }
             }
         }
 
@@ -391,10 +396,10 @@ public final class TimelineView: UIView {
             currentX += style.groupWidth(index: index)
         }
     
-        for (hour, time) in times.enumerated() {
+        for (tickIndex, time) in times.enumerated() {
             let rightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
-        
-            let hourFloat = CGFloat(hour)
+
+            let tickY = firstTickY + CGFloat(tickIndex) * tickHeight
             let context = UIGraphicsGetCurrentContext()
             context!.interpolationQuality = .none
             context?.saveGState()
@@ -414,14 +419,14 @@ public final class TimelineView: UIView {
                     return bounds.width
                 }
             }()
-            let y = style.verticalInset + hourFloat * style.verticalDiff + offset
+            let y = tickY + offset
             context?.beginPath()
             context?.move(to: CGPoint(x: xStart, y: y))
             context?.addLine(to: CGPoint(x: xEnd, y: y))
             context?.strokePath()
             context?.restoreGState()
-    
-            if hour == hourToRemoveIndex { continue }
+
+            if tickIndex == tickIndexToRemove { continue }
     
             let fontSize = style.font.pointSize
             let timeRect: CGRect = {
@@ -433,7 +438,7 @@ public final class TimelineView: UIView {
                 }
             
                 return CGRect(x: x,
-                              y: hourFloat * style.verticalDiff + style.verticalInset - 7,
+                              y: tickY - 7,
                               width: style.leadingInset - 8,
                               height: fontSize + 2)
             }()
