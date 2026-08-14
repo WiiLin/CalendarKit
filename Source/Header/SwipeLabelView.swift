@@ -83,13 +83,20 @@ public final class SwipeLabelView: UIView, DayViewStateUpdating {
         let attributes: [NSAttributedString.Key: Any] = [.foregroundColor: style.textColor,
                                                          .font: style.font]
         let attributed = NSMutableAttributedString(string: text, attributes: attributes)
-        guard style.showsTapIndicator, let image = UIImage(systemName: "chevron.down") else {
+        // chevron.down 原生是扁的，bounds 給正方形會被水平壓窄；尺寸交給 SymbolConfiguration 決定
+        let config = UIImage.SymbolConfiguration(pointSize: style.font.pointSize * 0.7, weight: .semibold)
+        guard style.showsTapIndicator,
+              let image = UIImage(systemName: "chevron.down", withConfiguration: config)?
+              .withTintColor(style.textColor, renderingMode: .alwaysOriginal)
+        else {
             return attributed
         }
         let attachment = NSTextAttachment()
-        let side = style.font.pointSize * 0.7
-        attachment.image = image.withTintColor(style.textColor, renderingMode: .alwaysOriginal)
-        attachment.bounds = CGRect(x: 0, y: -1, width: side, height: side)
+        attachment.image = image
+        attachment.bounds = CGRect(x: 0,
+                                   y: (style.font.capHeight - image.size.height) / 2,
+                                   width: image.size.width,
+                                   height: image.size.height)
         attributed.append(NSAttributedString(string: " "))
         attributed.append(NSAttributedString(attachment: attachment))
         return attributed
