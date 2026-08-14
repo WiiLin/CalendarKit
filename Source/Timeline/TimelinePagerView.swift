@@ -83,6 +83,10 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
         let timeline = controller.timeline
         timeline.updateStyle(style)
         container.backgroundColor = style.backgroundColor
+        // style 會改變 fullHeight（刻度密度、營業時段），frame 沒跟著調整的話
+        // 舊的繪製內容會被縮放後殘留在 layer 上，看起來像兩套刻度疊在一起
+        container.updateTimelineFrame()
+        container.setNeedsLayout()
     }
 
     public func scrollTo(hour24: Float, animated: Bool = true) {
