@@ -87,6 +87,8 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
         // 舊的繪製內容會被縮放後殘留在 layer 上，看起來像兩套刻度疊在一起
         container.updateTimelineFrame()
         container.setNeedsLayout()
+        // 左側固定時間欄畫的是同一批刻度，style 換了也要重繪
+        controller.fakeLeftTimelineView.setNeedsDisplay()
     }
 
     public func scrollTo(hour24: Float, animated: Bool = true) {

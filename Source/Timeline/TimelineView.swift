@@ -343,15 +343,9 @@ public final class TimelineView: UIView {
 
         // 刻度可以比小時更密，位置直接由刻度文字（HH:mm）換算，與事件的 dateToY
         // 共用同一套比例，不依賴另外設定的間隔，兩份資料就不可能不同步
-        let tickYs = times.enumerated().map { index, text in tickY(for: text, index: index) }
+        let tickYs = self.tickYs
 
-        // 與目前時間線重疊的刻度不畫文字，避免和紅線標籤疊在一起
-        var tickIndexToRemove = -1
-        if isToday {
-            let nowY = dateToY(currentTime)
-            let threshold = style.font.pointSize + 4
-            tickIndexToRemove = tickYs.firstIndex { abs($0 - nowY) < threshold } ?? -1
-        }
+        let tickIndexToRemove = tickIndexOverlappingNowLine
 
         let mutableParagraphStyle = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
         mutableParagraphStyle.lineBreakMode = .byWordWrapping
@@ -715,13 +709,30 @@ public final class TimelineView: UIView {
 
     /// 刻度文字對應的 Y 座標。文字是 "HH:mm" 時直接依時間換算，與 dateToY 同一套比例；
     /// 其他格式（如 "10 AM"）沿用「一個刻度一小時」的舊行為
+    /// 各刻度的 Y 座標。左側固定時間欄（LockTimelineView）畫的是同一批文字，
+    /// 必須共用這份結果，否則兩邊會各畫各的
+    var tickYs: [CGFloat] {
+        return times.enumerated().map { index, text in tickY(for: text, index: index) }
+    }
+
+    /// 與目前時間線重疊的刻度索引，重疊時不畫文字避免和紅線標籤相撞
+    var tickIndexOverlappingNowLine: Int {
+        guard isToday else { return -1 }
+        let nowY = dateToY(currentTime)
+        let threshold = style.font.pointSize + 4
+        return tickYs.firstIndex { abs($0 - nowY) < threshold } ?? -1
+    }
+
     private func tickY(for timeString: String, index: Int) -> CGFloat {
-        guard case let .custom(start24Hour, _, _) = style.dateStyle,
-              let minutes = Self.minutes(fromHHmm: timeString) else {
+        guard let minutes = Self.minutes(fromHHmm: timeString),
+              let tickDate = calendar.date(bySettingHour: minutes / 60,
+                                           minute: minutes % 60,
+                                           second: 0,
+                                           of: date) else {
             return style.verticalInset + CGFloat(index) * style.verticalDiff
         }
-        let offsetMinutes = CGFloat(minutes - start24Hour * 60)
-        return style.verticalInset + offsetMinutes * style.verticalDiff / 60
+        // 直接用事件的換算，基準（start24Hour、verticalDiff、verticalInset）完全一致
+        return dateToY(tickDate)
     }
 
     private static func minutes(fromHHmm text: String) -> Int? {

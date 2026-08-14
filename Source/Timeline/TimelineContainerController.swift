@@ -30,6 +30,12 @@ public final class TimelineContainerController: UIViewController {
         container.contentSize = timeline.frame.size
         lockContainer.isScrollEnabled = false
         lockContainer.contentSize = .init(width: timeline.style.leadingInset, height: timeline.frame.size.height)
+        // timeline 高度會隨刻度設定與營業時段變動，左側時間欄要跟著調整並重繪
+        let lockFrame = CGRect(x: 0, y: 0, width: timeline.style.leadingInset, height: timeline.frame.size.height)
+        if fakeLeftTimelineView.frame != lockFrame {
+            fakeLeftTimelineView.frame = lockFrame
+            fakeLeftTimelineView.setNeedsDisplay()
+        }
         if let newOffset = pendingContentOffset {
             // Apply new offset only once the size has been determined
             if view.bounds != .zero {
@@ -84,17 +90,9 @@ class LockTimelineView: UIView {
     override public func draw(_ rect: CGRect) {
         super.draw(rect)
 
-        var hourToRemoveIndex = -1
-
-        if timelineView.isToday {
-            let minute = timelineView.component(component: .minute, from: timelineView.currentTime)
-            let hour = timelineView.component(component: .hour, from: timelineView.currentTime)
-            if minute > 39 {
-                hourToRemoveIndex = hour + 1
-            } else if minute < 21 {
-                hourToRemoveIndex = hour
-            }
-        }
+        // 刻度位置與 TimelineView 共用同一份，兩邊各算會對不上
+        let tickYs = timelineView.tickYs
+        let tickIndexToRemove = timelineView.tickIndexOverlappingNowLine
 
         let mutableParagraphStyle = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
         mutableParagraphStyle.lineBreakMode = .byWordWrapping
@@ -134,12 +132,12 @@ class LockTimelineView: UIView {
             currentX += timelineView.style.groupWidth(index: index)
         }
       
-        for (hour, time) in timelineView.times.enumerated() {
+        for (tickIndex, time) in timelineView.times.enumerated() {
             let rightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
-          
-            let hourFloat = CGFloat(hour)
-            if hour == hourToRemoveIndex { continue }
-      
+
+            if tickIndex == tickIndexToRemove { continue }
+            guard tickIndex < tickYs.count else { continue }
+
             let fontSize = timelineView.style.font.pointSize
             let timeRect: CGRect = {
                 var x: CGFloat
@@ -148,9 +146,9 @@ class LockTimelineView: UIView {
                 } else {
                     x = 2
                 }
-              
+
                 return CGRect(x: x,
-                              y: hourFloat * timelineView.style.verticalDiff + timelineView.style.verticalInset - 7,
+                              y: tickYs[tickIndex] - 7,
                               width: timelineView.style.leadingInset - 8,
                               height: fontSize + 2)
             }()
