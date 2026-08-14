@@ -29,6 +29,9 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
 
     public var autoScrollToFirstEvent = false
 
+    /// 每次建立時段捲動容器後呼叫，供上層掛下拉重新整理等設定
+    public var onPrepareTimelineContainer: ((UIScrollView) -> Void)?
+
     private var pagingViewController = UIPageViewController(transitionStyle: .scroll,
                                                             navigationOrientation: .horizontal,
                                                             options: nil)
@@ -105,6 +108,8 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
         timeline.calendar = calendar
         timeline.date = date.dateOnly(calendar: calendar)
         controller.container.delegate = self
+        // 換日會建立新的容器，讓上層有機會為每一頁掛上下拉重新整理
+        onPrepareTimelineContainer?(controller.container)
         // 只有當前頁才立即更新 layoutAttributes，預加載頁稍後在 didMoveTo 時更新
         if shouldUpdateLayout {
             updateTimeline(timeline)
