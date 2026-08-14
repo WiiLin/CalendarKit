@@ -13,7 +13,7 @@ public enum DateStyle {
     
     case custom(start24Hour: Int, end24Hour: Int, timeStrings: [String])
     
-    /// timeline 涵蓋的小時數。刻度可以比小時更密（見 TimelineStyle.minuteInterval），
+    /// timeline 涵蓋的小時數。刻度可以比小時更密（位置由刻度文字換算），
     /// 所以這裡以 start／end 計算，不能用 timeStrings.count
     public var count: Int {
         switch self {
@@ -117,11 +117,6 @@ public struct TimelineStyle {
     public var dateStyle: DateStyle = .system
     /// 每小時的高度（像素），影響 timeline 的垂直縮放比例
     public var verticalDiff: CGFloat = 100
-    /// 左側時間刻度的間隔（分鐘）。60 為每小時一格，改成 30／15 只會讓刻度變密，
-    /// 事件定位仍以 verticalDiff 代表一小時來換算
-    public var minuteInterval: Int = 60
-    /// 第一個刻度相對 start24Hour 整點的分鐘偏移，供非整點營業起始時間對齊（如 10:15）
-    public var firstTickMinuteOffset: Int = 0
     /// Timeline 頂部的內邊距
     public var verticalInset: CGFloat = 10
     /// 左側時間標籤區域的寬度，事件從這個位置之後開始繪製

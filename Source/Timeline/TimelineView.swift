@@ -341,21 +341,16 @@ public final class TimelineView: UIView {
     override public func draw(_ rect: CGRect) {
         super.draw(rect)
 
-        // 刻度可能比小時更密，位置一律由 minuteInterval 換算，不能再用 index 當小時
-        let tickHeight = style.verticalDiff * CGFloat(style.minuteInterval) / 60
-        let firstTickY = style.verticalInset + style.verticalDiff * CGFloat(style.firstTickMinuteOffset) / 60
+        // 刻度可以比小時更密，位置直接由刻度文字（HH:mm）換算，與事件的 dateToY
+        // 共用同一套比例，不依賴另外設定的間隔，兩份資料就不可能不同步
+        let tickYs = times.enumerated().map { index, text in tickY(for: text, index: index) }
 
         // 與目前時間線重疊的刻度不畫文字，避免和紅線標籤疊在一起
         var tickIndexToRemove = -1
         if isToday {
             let nowY = dateToY(currentTime)
             let threshold = style.font.pointSize + 4
-            for index in 0 ..< times.count {
-                if abs(firstTickY + CGFloat(index) * tickHeight - nowY) < threshold {
-                    tickIndexToRemove = index
-                    break
-                }
-            }
+            tickIndexToRemove = tickYs.firstIndex { abs($0 - nowY) < threshold } ?? -1
         }
 
         let mutableParagraphStyle = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
@@ -399,7 +394,7 @@ public final class TimelineView: UIView {
         for (tickIndex, time) in times.enumerated() {
             let rightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
 
-            let tickY = firstTickY + CGFloat(tickIndex) * tickHeight
+            let tickY = tickYs[tickIndex]
             let context = UIGraphicsGetCurrentContext()
             context!.interpolationQuality = .none
             context?.saveGState()
@@ -717,6 +712,25 @@ public final class TimelineView: UIView {
     }
 
     // MARK: - Helpers
+
+    /// 刻度文字對應的 Y 座標。文字是 "HH:mm" 時直接依時間換算，與 dateToY 同一套比例；
+    /// 其他格式（如 "10 AM"）沿用「一個刻度一小時」的舊行為
+    private func tickY(for timeString: String, index: Int) -> CGFloat {
+        guard case let .custom(start24Hour, _, _) = style.dateStyle,
+              let minutes = Self.minutes(fromHHmm: timeString) else {
+            return style.verticalInset + CGFloat(index) * style.verticalDiff
+        }
+        let offsetMinutes = CGFloat(minutes - start24Hour * 60)
+        return style.verticalInset + offsetMinutes * style.verticalDiff / 60
+    }
+
+    private static func minutes(fromHHmm text: String) -> Int? {
+        let parts = text.split(separator: ":")
+        guard parts.count == 2,
+              let hour = Int(parts[0]),
+              let minute = Int(parts[1]) else { return nil }
+        return hour * 60 + minute
+    }
 
     /// 將日期轉換為 Y 座標
     /// - Parameter date: 要轉換的日期
