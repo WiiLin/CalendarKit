@@ -62,41 +62,33 @@ public extension Event {
     }
 
 
+    /// 同一時刻最多幾筆同時進行，決定這一欄要幾格寬。
+    ///
+    /// 舊版算的是「連通群的大小」：A 與 B 重疊、B 與 C 重疊時，即使 A 與 C 完全錯開
+    /// 也會被算成同一群。只要有一筆跨整天的事件，當天所有預約都會被串成一大群，
+    /// 欄寬就變成「當天筆數 × 110」而不是實際需要的格數。
+    /// 改用掃描線取「同時進行的最大筆數」。
     static func totalOverlapPeriods(_ periods: [Event]) -> Int {
-        let validEvents = periods.filter { $0.range != nil }
-        let sortedEvents = validEvents.sorted { $0.startDate < $1.startDate }
-        var groupsOfEvents = [[Event]]()
+        let ranges = periods.compactMap { $0.range }
+        guard ranges.isEmpty == false else { return 1 }
 
-        for event in sortedEvents {
-            guard let eventRange = event.range else { continue }
-
-            var foundGroup = false
-
-            for i in 0..<groupsOfEvents.count {
-                let group = groupsOfEvents[i]
-                let longestEvent = group.sorted { (event1, event2) -> Bool in
-                    let period1 = event1.endDate.timeIntervalSince(event1.startDate)
-                    let period2 = event2.endDate.timeIntervalSince(event2.startDate)
-                    return period1 > period2
-                }.first!
-
-                if let longestRange = longestEvent.range, longestRange.overlaps(eventRange) {
-                    groupsOfEvents[i].append(event)
-                    foundGroup = true
-                    break
-                }
-            }
-
-            if !foundGroup {
-                groupsOfEvents.append([event])
-            }
+        var points: [(date: Date, delta: Int)] = []
+        points.reserveCapacity(ranges.count * 2)
+        for range in ranges {
+            points.append((range.lowerBound, 1))
+            points.append((range.upperBound, -1))
         }
+        // 同一時間點先處理離場，讓「前一筆結束、後一筆開始」不算重疊
+        points.sort { $0.date == $1.date ? $0.delta < $1.delta : $0.date < $1.date }
 
-        let longestGroupCount = groupsOfEvents.map { $0.count }.max() ?? 0
-        return longestGroupCount == 0 ? 1 : longestGroupCount
-      }
-
-
+        var current = 0
+        var maxOverlap = 0
+        for point in points {
+            current += point.delta
+            maxOverlap = max(maxOverlap, current)
+        }
+        return max(1, maxOverlap)
+    }
 }
 
 extension Event {
