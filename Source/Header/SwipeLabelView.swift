@@ -70,7 +70,6 @@ public final class SwipeLabelView: UIView, DayViewStateUpdating {
         }
         // 只吃點擊，左右滑動切換日期的手勢不受影響
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
-        isUserInteractionEnabled = true
         updateStyle(style)
     }
 

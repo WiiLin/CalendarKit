@@ -10,19 +10,14 @@ import UIKit
 class GroupNameView: UIView {
     var style = TimelineStyle()
 
-    /// 固定欄位與下方時段內容之間的分隔線，避免捲動時內容看起來疊在一起
-    private lazy var bottomSeparator: UIView = {
-        let separator = UIView()
-        separator.backgroundColor = style.separatorColor
-        addSubview(separator)
-        return separator
-    }()
+    /// 固定欄位與下方時段內容之間的分隔線，避免捲動時內容看起來疊在一起。
+    /// updateStyle 會清掉所有 subview 再重建，這裡不 addSubview，統一由它負責加回
+    private let bottomSeparator = UIView()
 
     override func layoutSubviews() {
         super.layoutSubviews()
         let lineHeight = 1 / UIScreen.main.scale
         bottomSeparator.frame = CGRect(x: 0, y: bounds.height - lineHeight, width: bounds.width, height: lineHeight)
-        bringSubviewToFront(bottomSeparator)
     }
 
     override func draw(_ rect: CGRect) {
@@ -48,8 +43,6 @@ class GroupNameView: UIView {
     func updateStyle(_ newStyle: TimelineStyle) {
         style = newStyle
         subviews.forEach { $0.removeFromSuperview() }
-        bottomSeparator.backgroundColor = newStyle.separatorColor
-        addSubview(bottomSeparator)
 
         let spaceView = UIView(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: 30))
         addSubview(spaceView)
@@ -68,6 +61,10 @@ class GroupNameView: UIView {
             addSubview(label)
             currentX += newStyle.groupWidth(index: index)
         }
+
+        // 最後才加，順序即最上層，不必每次 layout 再 bringSubviewToFront
+        bottomSeparator.backgroundColor = newStyle.separatorColor
+        addSubview(bottomSeparator)
         setNeedsDisplay()
     }
 }
