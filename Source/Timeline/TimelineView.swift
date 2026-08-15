@@ -20,9 +20,12 @@ public final class TimelineView: UIView {
     /// 當前顯示的日期，當設置時會觸發重新佈局
     public var date = Date() {
         didSet {
+            invalidateTickYs()
             setNeedsLayout()
         }
     }
+
+    private var cachedTickYs: [CGFloat]?
 
     /// 當前時間（實時獲取）
     public var currentTime: Date {
@@ -169,6 +172,7 @@ public final class TimelineView: UIView {
         didSet {
             nowLine.calendar = calendar
             regenerateTimeStrings()
+            invalidateTickYs()
             setNeedsLayout()
         }
     }
@@ -319,6 +323,7 @@ public final class TimelineView: UIView {
     /// - Parameter newStyle: 新的樣式配置
     public func updateStyle(_ newStyle: TimelineStyle) {
         style = newStyle
+        invalidateTickYs()
         allDayView.updateStyle(style.allDayStyle)
         nowLine.updateStyle(style.timeIndicator)
         groupNameView.updateStyle(newStyle)
@@ -342,19 +347,9 @@ public final class TimelineView: UIView {
         super.draw(rect)
 
         // 刻度可以比小時更密，位置直接由刻度文字（HH:mm）換算，與事件的 dateToY
-        // 共用同一套比例，不依賴另外設定的間隔，兩份資料就不可能不同步
+        // 共用同一套比例，不依賴另外設定的間隔，兩份資料就不可能不同步。
+        // 時間文字由 TimeRulerView 統一畫，這裡只負責格線
         let tickYs = self.tickYs
-
-        let tickIndexToRemove = tickIndexOverlappingNowLine
-
-        let mutableParagraphStyle = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
-        mutableParagraphStyle.lineBreakMode = .byWordWrapping
-        mutableParagraphStyle.alignment = .right
-        let paragraphStyle = mutableParagraphStyle.copy() as! NSParagraphStyle
-
-        let attributes = [NSAttributedString.Key.paragraphStyle: paragraphStyle,
-                          NSAttributedString.Key.foregroundColor: style.timeColor,
-                          NSAttributedString.Key.font: style.font] as [NSAttributedString.Key: Any]
 
         let scale = UIScreen.main.scale
         let hourLineHeight = 1 / UIScreen.main.scale
@@ -385,10 +380,9 @@ public final class TimelineView: UIView {
             currentX += style.groupWidth(index: index)
         }
     
-        for (tickIndex, time) in times.enumerated() {
+        for tickY in tickYs {
             let rightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
 
-            let tickY = tickYs[tickIndex]
             let context = UIGraphicsGetCurrentContext()
             context!.interpolationQuality = .none
             context?.saveGState()
@@ -414,26 +408,6 @@ public final class TimelineView: UIView {
             context?.addLine(to: CGPoint(x: xEnd, y: y))
             context?.strokePath()
             context?.restoreGState()
-
-            if tickIndex == tickIndexToRemove { continue }
-    
-            let fontSize = style.font.pointSize
-            let timeRect: CGRect = {
-                var x: CGFloat
-                if rightToLeft {
-                    x = bounds.width - 53
-                } else {
-                    x = 2
-                }
-            
-                return CGRect(x: x,
-                              y: tickY - 7,
-                              width: style.leadingInset - 8,
-                              height: fontSize + 2)
-            }()
-    
-            let timeString = NSString(string: time)
-            timeString.draw(in: timeRect, withAttributes: attributes)
         }
     }
   
@@ -707,12 +681,23 @@ public final class TimelineView: UIView {
 
     // MARK: - Helpers
 
-    /// 刻度文字對應的 Y 座標。文字是 "HH:mm" 時直接依時間換算，與 dateToY 同一套比例；
-    /// 其他格式（如 "10 AM"）沿用「一個刻度一小時」的舊行為
-    /// 各刻度的 Y 座標。左側固定時間欄（LockTimelineView）畫的是同一批文字，
-    /// 必須共用這份結果，否則兩邊會各畫各的
+    /// 各刻度的 Y 座標。文字是 "HH:mm" 時依時間換算，與 dateToY 同一套比例；
+    /// 其他格式（如 "10 AM"）沿用「一個刻度一小時」的舊行為。
+    /// 左側固定時間欄（TimeRulerView）畫的是同一批文字，必須共用這份結果，
+    /// 否則兩邊會各畫各的。
+    /// 結果只取決於 date 與 style，一次 draw 會被存取多次（自己兩次、Lock 兩次），故快取
     var tickYs: [CGFloat] {
-        return times.enumerated().map { index, text in tickY(for: text, index: index) }
+        if let cachedTickYs = cachedTickYs {
+            return cachedTickYs
+        }
+        let result = times.enumerated().map { index, text in tickY(for: text, index: index) }
+        cachedTickYs = result
+        return result
+    }
+
+    /// date 或 style 變動後刻度位置就不同了，下次存取要重算
+    func invalidateTickYs() {
+        cachedTickYs = nil
     }
 
     /// 與目前時間線重疊的刻度索引，重疊時不畫文字避免和紅線標籤相撞
