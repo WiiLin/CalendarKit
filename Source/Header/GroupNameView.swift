@@ -44,12 +44,12 @@ class GroupNameView: UIView {
         style = newStyle
         subviews.forEach { $0.removeFromSuperview() }
 
-        let spaceView = UIView(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: 30))
+        let spaceView = UIView(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: TimelineView.groupNameViewHeight))
         addSubview(spaceView)
-      
+
         var currentX: CGFloat = 0
         for index in 0 ..< newStyle.group.count {
-            let label = UILabel(frame: CGRect(x: currentX + newStyle.leadingInset, y: 0, width: newStyle.groupWidth(index: index), height: 30))
+            let label = UILabel(frame: CGRect(x: currentX + newStyle.leadingInset, y: 0, width: newStyle.groupWidth(index: index), height: TimelineView.groupNameViewHeight))
             label.numberOfLines = 0
             label.adjustsFontSizeToFitWidth = true
             label.minimumScaleFactor = 0.5

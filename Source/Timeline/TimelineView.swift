@@ -65,7 +65,7 @@ public final class TimelineView: UIView {
                 recalculateEventLayout()
                 prepareEventViews()
                 layoutEvents()
-                if (allDayLayoutAttributes.count == 0 && style.groupCount <= 1) {
+                if allDayLayoutAttributes.count == 0 && style.groupCount <= 1 {
                     allDayView.isHidden = true
                 } else {
                     allDayView.isHidden = false
@@ -133,12 +133,13 @@ public final class TimelineView: UIView {
 
         allDayView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 0).isActive = true
         allDayView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 0).isActive = true
-        allDayView.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        allDayView.heightAnchor.constraint(equalToConstant: Self.groupNameViewHeight).isActive = true
         return allDayView
     }()
-    
-    /// 組名稱視圖的高度
-    var groupNameViewHeight: CGFloat = 30
+
+    /// 捲動時固定在頂部的員工名稱／業績列高度。
+    /// public 讓 App 端的浮層（如總表整月選日）能定位在此列下方，不遮住員工業績
+    public static let groupNameViewHeight: CGFloat = 30
   
     /// 全天視圖的實際高度
     var allDayViewHeight: CGFloat {
@@ -364,7 +365,6 @@ public final class TimelineView: UIView {
         let offset = 0.5 - center
         var currentX: CGFloat = style.leadingInset
         for index in 0 ..< style.groupCount {
-
             let context = UIGraphicsGetCurrentContext()
             context!.interpolationQuality = .none
             context?.saveGState()
@@ -636,34 +636,32 @@ public final class TimelineView: UIView {
     /// 準備事件視圖（重用池機制）
     /// 將舊視圖回收到池中，然後從池中取出或創建新視圖
     private func prepareEventViews() {
-
         let startTime = CFAbsoluteTimeGetCurrent()
-            enqueueEventViews()
+        enqueueEventViews()
 
-            var reusableViews: [EventView] = []
-            var newViews: [EventView] = []
-            let neededCount = regularLayoutAttributes.count
+        var reusableViews: [EventView] = []
+        var newViews: [EventView] = []
+        let neededCount = regularLayoutAttributes.count
 
-            // 批量從池中取出
-            for _ in 0..<neededCount {
-                let tuple = pool.dequeue()
-                if tuple.isNew {
-                    newViews.append(tuple.object)
-                } else {
-                    reusableViews.append(tuple.object)
-                }
+        // 批量從池中取出
+        for _ in 0 ..< neededCount {
+            let tuple = pool.dequeue()
+            if tuple.isNew {
+                newViews.append(tuple.object)
+            } else {
+                reusableViews.append(tuple.object)
             }
+        }
 
-            // 關鍵：一次性添加所有 view
-            let allViews = reusableViews + newViews
-            allViews.forEach { $0.frame = .zero } // 可選：預設 frame
-            self.addSubviews(allViews) // 使用批量添加擴展
+        // 關鍵：一次性添加所有 view
+        let allViews = reusableViews + newViews
+        allViews.forEach { $0.frame = .zero } // 可選：預設 frame
+        addSubviews(allViews) // 使用批量添加擴展
 
-            eventViews = allViews
+        eventViews = allViews
 
-            let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-            print("⏱️ prepareEventViews 耗時: \(String(format: "%.3f", elapsedTime))ms, new: \(newViews.count), reuse: \(reusableViews.count)")
-
+        let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+        print("⏱️ prepareEventViews 耗時: \(String(format: "%.3f", elapsedTime))ms, new: \(newViews.count), reuse: \(reusableViews.count)")
     }
 
     /// 準備重用視圖（清理當前視圖並回收到池中）
@@ -713,7 +711,8 @@ public final class TimelineView: UIView {
               let tickDate = calendar.date(bySettingHour: minutes / 60,
                                            minute: minutes % 60,
                                            second: 0,
-                                           of: date) else {
+                                           of: date)
+        else {
             return style.verticalInset + CGFloat(index) * style.verticalDiff
         }
         // 直接用事件的換算，基準（start24Hour、verticalDiff、verticalInset）完全一致
@@ -784,7 +783,6 @@ public final class TimelineView: UIView {
     public func component(component: Calendar.Component, from date: Date) -> Int {
         return calendar.component(component, from: date)
     }
-  
 }
 
 extension UIView {
