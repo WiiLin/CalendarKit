@@ -29,10 +29,25 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
 
     public var autoScrollToFirstEvent = false
 
+    /// 每次建立時段捲動容器後呼叫，供上層掛下拉重新整理等設定
+    public var onPrepareTimelineContainer: ((UIScrollView) -> Void)? {
+        didSet {
+            // 初始頁在 init 時就建好了，設定 closure 後補呼叫一次，否則第一次進畫面那一頁會漏掉
+            if let container = currentTimeline?.container {
+                onPrepareTimelineContainer?(container)
+            }
+        }
+    }
+
     private var pagingViewController = UIPageViewController(transitionStyle: .scroll,
                                                             navigationOrientation: .horizontal,
                                                             options: nil)
     public private(set) var style = TimelineStyle()
+
+    /// 左側時間刻度欄。整個 pager 只有一份，蓋在換頁區之上：
+    /// 換日（水平）時它不動，垂直捲動才跟著 currentTimeline 同步 offset
+    private let timeRulerContainer = UIScrollView()
+    private let timeRulerView = TimeRulerView()
 
     public weak var state: DayViewState? {
         willSet(newValue) {
@@ -66,6 +81,39 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
         pagingViewController.dataSource = self
         pagingViewController.delegate = self
         addSubview(pagingViewController.view!)
+
+        // 手勢交給下層的換頁與捲動，這層只負責顯示
+        timeRulerContainer.isScrollEnabled = false
+        timeRulerContainer.showsVerticalScrollIndicator = false
+        timeRulerContainer.addSubview(timeRulerView)
+        addSubview(timeRulerContainer)
+        timeRulerView.timelineView = vc.timeline
+    }
+
+    /// 換頁或 style 變動後，讓時間欄指向當前那頁並重算高度
+    private func syncTimeRuler() {
+        guard let container = currentTimeline?.container, let timeline = currentTimeline?.timeline else { return }
+        if timeRulerView.timelineView !== timeline {
+            timeRulerView.timelineView = timeline
+        }
+        // 背景色跟著 style 走：timelineView 參考沒變時 didSet 不會觸發，要在這裡更新
+        timeRulerView.backgroundColor = style.backgroundColor
+
+        let rulerSize = CGSize(width: style.leadingInset, height: timeline.fullHeight)
+        if timeRulerView.frame.size != rulerSize {
+            timeRulerView.frame = CGRect(origin: .zero, size: rulerSize)
+            timeRulerView.setNeedsDisplay()
+        }
+        timeRulerContainer.contentSize = rulerSize
+        syncTimeRulerOffset(with: container)
+    }
+
+    /// 時間欄與時段容器共用同一套座標：inset 要一起跟，否則會差一個 allDayView 的高度
+    private func syncTimeRulerOffset(with container: UIScrollView) {
+        if timeRulerContainer.contentInset != container.contentInset {
+            timeRulerContainer.contentInset = container.contentInset
+        }
+        timeRulerContainer.contentOffset = CGPoint(x: 0, y: container.contentOffset.y)
     }
 
     public func updateStyle(_ newStyle: TimelineStyle) {
@@ -76,6 +124,9 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
             }
         }
         pagingViewController.view.backgroundColor = style.backgroundColor
+        // 刻度密度、營業時段都可能變，時間欄要跟著重算高度與重繪
+        timeRulerView.setNeedsDisplay()
+        setNeedsLayout()
     }
 
     private func updateStyleOfTimelineContainer(controller: TimelineContainerController) {
@@ -83,6 +134,10 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
         let timeline = controller.timeline
         timeline.updateStyle(style)
         container.backgroundColor = style.backgroundColor
+        // style 會改變 fullHeight（刻度密度、營業時段），frame 沒跟著調整的話
+        // 舊的繪製內容會被縮放後殘留在 layer 上，看起來像兩套刻度疊在一起
+        container.updateTimelineFrame()
+        container.setNeedsLayout()
     }
 
     public func scrollTo(hour24: Float, animated: Bool = true) {
@@ -105,6 +160,8 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
         timeline.calendar = calendar
         timeline.date = date.dateOnly(calendar: calendar)
         controller.container.delegate = self
+        // 換日會建立新的容器，讓上層有機會為每一頁掛上下拉重新整理
+        onPrepareTimelineContainer?(controller.container)
         // 只有當前頁才立即更新 layoutAttributes，預加載頁稍後在 didMoveTo 時更新
         if shouldUpdateLayout {
             updateTimeline(timeline)
@@ -113,8 +170,11 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
     }
 
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        let offset = scrollView.contentOffset
-        currentTimeline?.lockContainer.contentOffset = .init(x: 0, y: offset.y)
+        // 只跟當前那頁的垂直位移；水平換頁不影響時間欄。
+        // container 的 contentInset 是在它自己的 layoutSubviews 才算好的（晚於本層），
+        // 這裡一併同步，第一次 layout 的落差會在捲動時補正
+        guard scrollView === currentTimeline?.container else { return }
+        syncTimeRulerOffset(with: scrollView)
     }
 
     /// 重新載入數據，只更新當前可見的 TimelineView
@@ -128,6 +188,8 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
     override public func layoutSubviews() {
         super.layoutSubviews()
         pagingViewController.view.frame = bounds
+        timeRulerContainer.frame = CGRect(x: 0, y: 0, width: style.leadingInset, height: bounds.height)
+        syncTimeRuler()
     }
 
     private func updateTimeline(_ timeline: TimelineView) {
@@ -183,6 +245,8 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
                 }
               
                 self.pagingViewController.viewControllers?.first?.view.setNeedsLayout()
+                // 時間欄改指向新的那頁
+                self.syncTimeRuler()
                 self.scrollToFirstEventIfNeeded(animated: true)
                 self.delegate?.timelinePager(timelinePager: self, didMoveTo: newDate)
             }
@@ -245,6 +309,8 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
             delegate?.timelinePager(timelinePager: self, willMoveTo: selectedDate)
             // 在 didMoveTo 時才更新當前頁的 layoutAttributes
             updateTimeline(timelineContainerController.timeline)
+            // 時間欄改指向新的那頁
+            syncTimeRuler()
             state?.client(client: self, didMoveTo: selectedDate)
             scrollToFirstEventIfNeeded(animated: true)
             delegate?.timelinePager(timelinePager: self, didMoveTo: selectedDate)

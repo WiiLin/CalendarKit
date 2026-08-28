@@ -20,9 +20,12 @@ public final class TimelineView: UIView {
     /// 當前顯示的日期，當設置時會觸發重新佈局
     public var date = Date() {
         didSet {
+            invalidateTickYs()
             setNeedsLayout()
         }
     }
+
+    private var cachedTickYs: [CGFloat]?
 
     /// 當前時間（實時獲取）
     public var currentTime: Date {
@@ -62,7 +65,7 @@ public final class TimelineView: UIView {
                 recalculateEventLayout()
                 prepareEventViews()
                 layoutEvents()
-                if (allDayLayoutAttributes.count == 0 && style.groupCount <= 1) {
+                if allDayLayoutAttributes.count == 0 && style.groupCount <= 1 {
                     allDayView.isHidden = true
                 } else {
                     allDayView.isHidden = false
@@ -130,12 +133,13 @@ public final class TimelineView: UIView {
 
         allDayView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 0).isActive = true
         allDayView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 0).isActive = true
-        allDayView.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        allDayView.heightAnchor.constraint(equalToConstant: Self.groupNameViewHeight).isActive = true
         return allDayView
     }()
-    
-    /// 組名稱視圖的高度
-    var groupNameViewHeight: CGFloat = 30
+
+    /// 捲動時固定在頂部的員工名稱／業績列高度。
+    /// public 讓 App 端的浮層（如總表整月選日）能定位在此列下方，不遮住員工業績
+    public static let groupNameViewHeight: CGFloat = 30
   
     /// 全天視圖的實際高度
     var allDayViewHeight: CGFloat {
@@ -169,6 +173,7 @@ public final class TimelineView: UIView {
         didSet {
             nowLine.calendar = calendar
             regenerateTimeStrings()
+            invalidateTickYs()
             setNeedsLayout()
         }
     }
@@ -319,6 +324,7 @@ public final class TimelineView: UIView {
     /// - Parameter newStyle: 新的樣式配置
     public func updateStyle(_ newStyle: TimelineStyle) {
         style = newStyle
+        invalidateTickYs()
         allDayView.updateStyle(style.allDayStyle)
         nowLine.updateStyle(style.timeIndicator)
         groupNameView.updateStyle(newStyle)
@@ -341,26 +347,10 @@ public final class TimelineView: UIView {
     override public func draw(_ rect: CGRect) {
         super.draw(rect)
 
-        var hourToRemoveIndex = -1
-
-        if isToday {
-            let minute = component(component: .minute, from: currentTime)
-            let hour = component(component: .hour, from: currentTime)
-            if minute > 39 {
-                hourToRemoveIndex = hour + 1
-            } else if minute < 21 {
-                hourToRemoveIndex = hour
-            }
-        }
-
-        let mutableParagraphStyle = NSParagraphStyle.default.mutableCopy() as! NSMutableParagraphStyle
-        mutableParagraphStyle.lineBreakMode = .byWordWrapping
-        mutableParagraphStyle.alignment = .right
-        let paragraphStyle = mutableParagraphStyle.copy() as! NSParagraphStyle
-
-        let attributes = [NSAttributedString.Key.paragraphStyle: paragraphStyle,
-                          NSAttributedString.Key.foregroundColor: style.timeColor,
-                          NSAttributedString.Key.font: style.font] as [NSAttributedString.Key: Any]
+        // 刻度可以比小時更密，位置直接由刻度文字（HH:mm）換算，與事件的 dateToY
+        // 共用同一套比例，不依賴另外設定的間隔，兩份資料就不可能不同步。
+        // 時間文字由 TimeRulerView 統一畫，這裡只負責格線
+        let tickYs = self.tickYs
 
         let scale = UIScreen.main.scale
         let hourLineHeight = 1 / UIScreen.main.scale
@@ -375,7 +365,6 @@ public final class TimelineView: UIView {
         let offset = 0.5 - center
         var currentX: CGFloat = style.leadingInset
         for index in 0 ..< style.groupCount {
-
             let context = UIGraphicsGetCurrentContext()
             context!.interpolationQuality = .none
             context?.saveGState()
@@ -391,10 +380,9 @@ public final class TimelineView: UIView {
             currentX += style.groupWidth(index: index)
         }
     
-        for (hour, time) in times.enumerated() {
+        for tickY in tickYs {
             let rightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
-        
-            let hourFloat = CGFloat(hour)
+
             let context = UIGraphicsGetCurrentContext()
             context!.interpolationQuality = .none
             context?.saveGState()
@@ -414,32 +402,12 @@ public final class TimelineView: UIView {
                     return bounds.width
                 }
             }()
-            let y = style.verticalInset + hourFloat * style.verticalDiff + offset
+            let y = tickY + offset
             context?.beginPath()
             context?.move(to: CGPoint(x: xStart, y: y))
             context?.addLine(to: CGPoint(x: xEnd, y: y))
             context?.strokePath()
             context?.restoreGState()
-    
-            if hour == hourToRemoveIndex { continue }
-    
-            let fontSize = style.font.pointSize
-            let timeRect: CGRect = {
-                var x: CGFloat
-                if rightToLeft {
-                    x = bounds.width - 53
-                } else {
-                    x = 2
-                }
-            
-                return CGRect(x: x,
-                              y: hourFloat * style.verticalDiff + style.verticalInset - 7,
-                              width: style.leadingInset - 8,
-                              height: fontSize + 2)
-            }()
-    
-            let timeString = NSString(string: time)
-            timeString.draw(in: timeRect, withAttributes: attributes)
         }
     }
   
@@ -668,34 +636,32 @@ public final class TimelineView: UIView {
     /// 準備事件視圖（重用池機制）
     /// 將舊視圖回收到池中，然後從池中取出或創建新視圖
     private func prepareEventViews() {
-
         let startTime = CFAbsoluteTimeGetCurrent()
-            enqueueEventViews()
+        enqueueEventViews()
 
-            var reusableViews: [EventView] = []
-            var newViews: [EventView] = []
-            let neededCount = regularLayoutAttributes.count
+        var reusableViews: [EventView] = []
+        var newViews: [EventView] = []
+        let neededCount = regularLayoutAttributes.count
 
-            // 批量從池中取出
-            for _ in 0..<neededCount {
-                let tuple = pool.dequeue()
-                if tuple.isNew {
-                    newViews.append(tuple.object)
-                } else {
-                    reusableViews.append(tuple.object)
-                }
+        // 批量從池中取出
+        for _ in 0 ..< neededCount {
+            let tuple = pool.dequeue()
+            if tuple.isNew {
+                newViews.append(tuple.object)
+            } else {
+                reusableViews.append(tuple.object)
             }
+        }
 
-            // 關鍵：一次性添加所有 view
-            let allViews = reusableViews + newViews
-            allViews.forEach { $0.frame = .zero } // 可選：預設 frame
-            self.addSubviews(allViews) // 使用批量添加擴展
+        // 關鍵：一次性添加所有 view
+        let allViews = reusableViews + newViews
+        allViews.forEach { $0.frame = .zero } // 可選：預設 frame
+        addSubviews(allViews) // 使用批量添加擴展
 
-            eventViews = allViews
+        eventViews = allViews
 
-            let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-            print("⏱️ prepareEventViews 耗時: \(String(format: "%.3f", elapsedTime))ms, new: \(newViews.count), reuse: \(reusableViews.count)")
-
+        let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+        print("⏱️ prepareEventViews 耗時: \(String(format: "%.3f", elapsedTime))ms, new: \(newViews.count), reuse: \(reusableViews.count)")
     }
 
     /// 準備重用視圖（清理當前視圖並回收到池中）
@@ -712,6 +678,54 @@ public final class TimelineView: UIView {
     }
 
     // MARK: - Helpers
+
+    /// 各刻度的 Y 座標。文字是 "HH:mm" 時依時間換算，與 dateToY 同一套比例；
+    /// 其他格式（如 "10 AM"）沿用「一個刻度一小時」的舊行為。
+    /// 左側固定時間欄（TimeRulerView）畫的是同一批文字，必須共用這份結果，
+    /// 否則兩邊會各畫各的。
+    /// 結果只取決於 date 與 style，一次 draw 會被存取多次（自己兩次、Lock 兩次），故快取
+    var tickYs: [CGFloat] {
+        if let cachedTickYs = cachedTickYs {
+            return cachedTickYs
+        }
+        let result = times.enumerated().map { index, text in tickY(for: text, index: index) }
+        cachedTickYs = result
+        return result
+    }
+
+    /// date 或 style 變動後刻度位置就不同了，下次存取要重算
+    func invalidateTickYs() {
+        cachedTickYs = nil
+    }
+
+    /// 與目前時間線重疊的刻度索引，重疊時不畫文字避免和紅線標籤相撞
+    var tickIndexOverlappingNowLine: Int {
+        guard isToday else { return -1 }
+        let nowY = dateToY(currentTime)
+        let threshold = style.font.pointSize + 4
+        return tickYs.firstIndex { abs($0 - nowY) < threshold } ?? -1
+    }
+
+    private func tickY(for timeString: String, index: Int) -> CGFloat {
+        guard let minutes = Self.minutes(fromHHmm: timeString),
+              let tickDate = calendar.date(bySettingHour: minutes / 60,
+                                           minute: minutes % 60,
+                                           second: 0,
+                                           of: date)
+        else {
+            return style.verticalInset + CGFloat(index) * style.verticalDiff
+        }
+        // 直接用事件的換算，基準（start24Hour、verticalDiff、verticalInset）完全一致
+        return dateToY(tickDate)
+    }
+
+    private static func minutes(fromHHmm text: String) -> Int? {
+        let parts = text.split(separator: ":")
+        guard parts.count == 2,
+              let hour = Int(parts[0]),
+              let minute = Int(parts[1]) else { return nil }
+        return hour * 60 + minute
+    }
 
     /// 將日期轉換為 Y 座標
     /// - Parameter date: 要轉換的日期
@@ -769,7 +783,6 @@ public final class TimelineView: UIView {
     public func component(component: Calendar.Component, from date: Date) -> Int {
         return calendar.component(component, from: date)
     }
-  
 }
 
 extension UIView {

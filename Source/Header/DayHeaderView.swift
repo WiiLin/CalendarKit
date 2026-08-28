@@ -17,6 +17,12 @@ public final class DayHeaderView: UIView, DaySelectorDelegate, DayViewStateUpdat
         }
     }
 
+    /// 點日期文字的回呼，供上層開啟整月快速選日
+    public var onSwipeLabelTap: (() -> Void)? {
+        get { return swipeLabelView.onTap }
+        set { swipeLabelView.onTap = newValue }
+    }
+
     private var currentWeekdayIndex = -1
 
     private var daySymbolsViewHeight: CGFloat = 20

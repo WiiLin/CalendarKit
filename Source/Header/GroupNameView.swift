@@ -9,6 +9,17 @@ import UIKit
 
 class GroupNameView: UIView {
     var style = TimelineStyle()
+
+    /// 固定欄位與下方時段內容之間的分隔線，避免捲動時內容看起來疊在一起。
+    /// updateStyle 會清掉所有 subview 再重建，這裡不 addSubview，統一由它負責加回
+    private let bottomSeparator = UIView()
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let lineHeight = 1 / UIScreen.main.scale
+        bottomSeparator.frame = CGRect(x: 0, y: bounds.height - lineHeight, width: bounds.width, height: lineHeight)
+    }
+
     override func draw(_ rect: CGRect) {
 //        let groupWidth = style.groupWidth()
 //        let hourLineHeight = 1 / UIScreen.main.scale
@@ -33,12 +44,12 @@ class GroupNameView: UIView {
         style = newStyle
         subviews.forEach { $0.removeFromSuperview() }
 
-        let spaceView = UIView(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: 30))
+        let spaceView = UIView(frame: CGRect(x: 0, y: 0, width: newStyle.leadingInset, height: TimelineView.groupNameViewHeight))
         addSubview(spaceView)
-      
+
         var currentX: CGFloat = 0
         for index in 0 ..< newStyle.group.count {
-            let label = UILabel(frame: CGRect(x: currentX + newStyle.leadingInset, y: 0, width: newStyle.groupWidth(index: index), height: 30))
+            let label = UILabel(frame: CGRect(x: currentX + newStyle.leadingInset, y: 0, width: newStyle.groupWidth(index: index), height: TimelineView.groupNameViewHeight))
             label.numberOfLines = 0
             label.adjustsFontSizeToFitWidth = true
             label.minimumScaleFactor = 0.5
@@ -50,6 +61,10 @@ class GroupNameView: UIView {
             addSubview(label)
             currentX += newStyle.groupWidth(index: index)
         }
+
+        // 最後才加，順序即最上層，不必每次 layout 再 bringSubviewToFront
+        bottomSeparator.backgroundColor = newStyle.separatorColor
+        addSubview(bottomSeparator)
         setNeedsDisplay()
     }
 }

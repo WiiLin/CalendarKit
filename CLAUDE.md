@@ -2,6 +2,35 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 共用規則檔（五個 repo 必須同步）
+
+EZPretty iOS 的五個 repo 共用同一份 `.claude/rules/`，**內容逐 byte 相同**：
+
+| repo | 角色 | 路徑 |
+|---|---|---|
+| `provider-ios` | iPhone 店家 App（ezDesigner） | `/Users/wiilin/Documents/iOS/EZPretty/provider-ios` |
+| `ezstore-ios` | iPad POS（ezStore） | `/Users/wiilin/Documents/iOS/EZPretty/ezstore-ios` |
+| `ez-framework-ios` | 共用 SPM package（EZPrinterKit） | `/Users/wiilin/Documents/iOS/EZPretty/ez-framework-ios` |
+| `ezhair-ios` | 消費者端 App（ezHair） | `/Users/wiilin/Documents/iOS/EZPretty/ezhair-ios` |
+| `CalendarKit` | 行事曆 UI library（fork） | `/Users/wiilin/Documents/iOS/EZPretty/CalendarKit` |
+
+現有規則檔：
+
+- `.claude/rules/ui-view-structure.md` —— UI 元件結構（可複用區塊抽成 `UIView` 子類、closure `private let` 宣告、`UIStackView.vstack/.hstack` 在宣告處填滿、callback 回傳完整物件、顏色集中到色票檔）
+
+### 同步鐵律
+
+- 改動任一 repo 的 `.claude/rules/*.md`，**MUST 同步套用到其餘四個**，NEVER 只改一邊。
+- 同步後 **MUST 用 checksum 驗證五份逐 byte 相同**：
+  ```bash
+  cd /Users/wiilin/Documents/iOS/EZPretty
+  for d in CalendarKit ezhair-ios ezstore-ios provider-ios ez-framework-ios; do
+    shasum "$d/.claude/rules/ui-view-structure.md"
+  done
+  ```
+- `CLAUDE.md` 的**共用章節**（本章節、共用邏輯歸屬、commit 規範）同樣五份同步；**專案專屬內容**（build 指令、目錄結構、該 repo 才有的 gotcha）留在各自 `CLAUDE.md`，NEVER 塞進共用 rules 檔。
+- `.claude/skills/` 的共用 skill（`tidy-commits`、`commit-message`）同理：規則本體改一份要同步其餘，gate 指令這類專案專屬段落各自保留。
+
 ## Project Overview
 
 CalendarKit is a Swift calendar UI library for iOS/iPadOS/Mac Catalyst that provides an Apple Calendar-like interface. It uses UIKit, targets iOS 9.0+, and has no external dependencies.

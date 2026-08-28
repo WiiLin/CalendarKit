@@ -19,7 +19,10 @@ public final class TimelineContainer: UIScrollView {
         super.layoutSubviews()
         timeline.frame = CGRect(x: 0, y: 0, width: timeline.style.contentWidth(), height: timeline.fullHeight)
         timeline.offsetAllDayView(by: contentOffset.y)
-        bounces = false
+        // UIRefreshControl 靠回彈觸發，掛了才放行；沒掛的維持原本不回彈
+        let hasRefreshControl = refreshControl != nil
+        bounces = hasRefreshControl
+        alwaysBounceVertical = hasRefreshControl
     
         // adjust the scroll insets
         let allDayViewHeight = timeline.allDayViewHeight

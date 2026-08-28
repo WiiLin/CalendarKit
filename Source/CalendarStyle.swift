@@ -13,10 +13,12 @@ public enum DateStyle {
     
     case custom(start24Hour: Int, end24Hour: Int, timeStrings: [String])
     
+    /// timeline 涵蓋的小時數。刻度可以比小時更密（位置由刻度文字換算），
+    /// 所以這裡以 start／end 計算，不能用 timeStrings.count
     public var count: Int {
         switch self {
-        case let .custom(_, _, timeStrings):
-            return timeStrings.count
+        case let .custom(start24Hour, end24Hour, _):
+            return max(1, end24Hour - start24Hour + 1)
         default:
             return 24
         }
@@ -86,6 +88,8 @@ public struct DaySymbolsStyle {
 public struct SwipeLabelStyle {
     public var textColor = SystemColors.label
     public var font = UIFont.systemFont(ofSize: 15)
+    /// 日期文字後面加一個下箭頭，提示可點開整月日曆
+    public var showsTapIndicator = false
     public init() {}
 }
 
