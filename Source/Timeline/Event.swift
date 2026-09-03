@@ -39,14 +39,11 @@ public final class Event: EventDescriptor {
 }
 
 public extension Event {
-    static func groupWidth(_ periods: [Event]) -> CGFloat {
-        let array = periods.map {($0.startDate, $0.endDate)}
-
+    /// 一欄要多寬：同時進行的最大筆數 × 單格寬。單格寬由 App 決定（iPhone 與 iPad 不同）
+    static func groupWidth(_ periods: [Event], slotWidth: CGFloat = 110) -> CGFloat {
         let maxOverlap = Self.totalOverlapPeriods(periods)
-        let width = 110.0
-        return width * Double(maxOverlap)
+        return slotWidth * CGFloat(maxOverlap)
     }
-
 
     static func updateGroupWidthIfNeed(group: [TimelineGroup], totalWidth: CGFloat) -> [TimelineGroup] {
         var group = group
@@ -56,13 +53,12 @@ public extension Event {
         if currentTotalWidth < totalWidth {
             let scaleFactor = totalWidth / currentTotalWidth
             group = group.map { group in
-                return .init(name: group.name, width: group.width * scaleFactor)
+                .init(name: group.name, width: group.width * scaleFactor)
             }
         }
 
         return group
     }
-
 
     /// 同一時刻最多幾筆同時進行，決定這一欄要幾格寬。
     ///
@@ -96,9 +92,9 @@ public extension Event {
 extension Event {
     var range: ClosedRange<Date>? {
         if endDate >= startDate {
-            return startDate...endDate
+            return startDate ... endDate
         } else {
             return nil
         }
-     }
+    }
 }

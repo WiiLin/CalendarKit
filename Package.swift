@@ -25,6 +25,10 @@ let package = Package(
         .target(name: "CalendarKit",
                 path: "Source",
                 resources: [.process("Localizations")]),
+        // 版面算術的測試（EventInsetRule）。CalendarKit 依賴 UIKit，只能在 iOS 目標上跑
+        .testTarget(name: "CalendarKitTests",
+                    dependencies: ["CalendarKit"],
+                    path: "Tests/CalendarKitTests"),
     ],
     swiftLanguageVersions: [.version("5.3")]
 )

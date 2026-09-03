@@ -36,9 +36,9 @@ public enum DateStyle {
     public func inHourRange(startDate: Date, endDate: Date, calendar: Calendar) -> Bool {
         switch self {
         case let .custom(start24Hour, end24Hour, _):
-            let date = Date() // 取得目前時間
             let startDateHour = calendar.component(.hour, from: startDate)
-            let endDateHour = calendar.component(.hour, from: endDate)
+            // 結束時間貼齊整點時要算成前一小時，否則「營業結束前最後一格」會因為進到下一小時被整筆濾掉
+            let endDateHour = calendar.component(.hour, from: endDate.addingTimeInterval(-1))
             return startDateHour >= start24Hour && endDateHour <= end24Hour
         default:
             return true
@@ -127,8 +127,19 @@ public struct TimelineStyle {
     public var leadingInset: CGFloat = 53
     /// 捲動時固定在頂部的員工名稱／業績列高度
     public var groupNameViewHeight: CGFloat = 30
-    /// 相鄰事件之間的間距（像素）
+    /// 事件視圖貼著群組欄左右邊界時的內縮（pt）
+    public var eventHorizontalPadding: CGFloat = 2
+    /// 事件視圖貼著 timeline 頂／底時的內縮（pt）
+    public var eventVerticalPadding: CGFloat = 2
+    /// 相鄰兩筆事件之間的間距（pt），兩筆各出一半；0 表示改用 padding。
+    /// 間距一律在這裡用 pt 表達，不要靠縮 event 的 startDate／endDate 製造留白 ——
+    /// 那會被 verticalDiff 放大成不同比例，也會污染 overlap 判斷與點擊命中範圍
     public var eventGap: CGFloat = 0
+    /// 表頭列以下、時間欄右側那整塊時段內容的外框線寬，0 表示不畫。
+    /// 這個框是獨立的一層，不由表頭下底線與欄分隔線兼任
+    public var contentBorderWidth: CGFloat = 0
+    /// 外框顏色
+    public var contentBorderColor: UIColor = SystemColors.systemSeparator
     /// 分組資訊（多人行事曆時，每個人一個 group）
     public var group: [TimelineGroup] = []
     var groupCount: Int {

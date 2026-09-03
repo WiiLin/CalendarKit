@@ -162,6 +162,13 @@ public final class TimelineView: UIView {
         return style.verticalInset * 2 + style.verticalDiff * CGFloat(style.dateStyle.count)
     }
 
+    /// 事件內縮規則，layout 與測試共用同一份
+    var eventInsetRule: EventInsetRule {
+        return EventInsetRule(verticalPadding: style.eventVerticalPadding,
+                              horizontalPadding: style.eventHorizontalPadding,
+                              gap: style.eventGap)
+    }
+
     /// 日曆區域的寬度（總寬度減去左側時間標籤寬度）
     public var calendarWidth: CGFloat {
         return bounds.width - style.leadingInset
@@ -452,25 +459,26 @@ public final class TimelineView: UIView {
         if eventViews.isEmpty { return }
         
         let startTime = CFAbsoluteTimeGetCurrent()
+        let isRightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
+        // 留白一律在這裡用 pt 內縮，event 的 startDate／endDate 保持真實時段。規則見 EventInsetRule
+        let rule = eventInsetRule
         for (idx, attributes) in regularLayoutAttributes.enumerated() {
             let descriptor = attributes.descriptor
             let eventView = eventViews[idx]
-            eventView.frame = attributes.frame
-        
-            // 處理 RTL（從右到左）佈局
-            var x: CGFloat
-            if UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft {
-                x = bounds.width - attributes.frame.minX - attributes.frame.width
-            } else {
-                x = attributes.frame.minX
-            }
-            // 添加內邊距
-            let widthPadding: CGFloat = 2.0
-            let heightPadding: CGFloat = 2.0
-            eventView.frame = CGRect(x: x + widthPadding,
-                                     y: attributes.frame.minY + heightPadding,
-                                     width: attributes.frame.width - style.eventGap - (widthPadding * 2),
-                                     height: attributes.frame.height - style.eventGap - (heightPadding * 2))
+
+            let x = isRightToLeft
+                ? bounds.width - attributes.frame.minX - attributes.frame.width
+                : attributes.frame.minX
+            let insets = rule.insets(top: attributes.topEdge,
+                                     bottom: attributes.bottomEdge,
+                                     columnIndex: attributes.columnIndex,
+                                     columnCount: attributes.columnCount,
+                                     isRightToLeft: isRightToLeft)
+
+            eventView.frame = CGRect(x: x + insets.left,
+                                     y: attributes.frame.minY + insets.top,
+                                     width: attributes.frame.width - insets.left - insets.right,
+                                     height: attributes.frame.height - insets.top - insets.bottom)
             eventView.updateWithDescriptor(event: descriptor)
         }
         let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000 // 轉換為毫秒
@@ -500,7 +508,36 @@ public final class TimelineView: UIView {
 //    }
     }
 
+    /// 算完同一個群組欄所有 frame 後，標記每一張卡的上下緣落在什麼上：
+    /// 有沒有貼著另一張卡（frame 相接且水平有交集）、有沒有落在畫出來的刻度線上。
+    /// 刻度線只在 `times` 有的位置（ezStore 是整點），半點的時段邊界不算線
+    private func markVerticalEdges(in events: [EventLayoutAttributes]) {
+        let ticks = tickYs
+        func isOnTick(_ y: CGFloat) -> Bool {
+            return ticks.contains { abs($0 - y) < 0.5 }
+        }
+        for event in events {
+            event.topEdge = VerticalEdge(touchesCard: false, onTickLine: isOnTick(event.frame.minY))
+            event.bottomEdge = VerticalEdge(touchesCard: false, onTickLine: isOnTick(event.frame.maxY))
+        }
+        for event in events {
+            for other in events where other !== event {
+                // 水平沒有交集就不是同一欄，上下相接也不算貼著
+                guard event.frame.minX < other.frame.maxX, other.frame.minX < event.frame.maxX else { continue }
+                if abs(event.frame.minY - other.frame.maxY) < 1 {
+                    event.topEdge.touchesCard = true
+                }
+                if abs(event.frame.maxY - other.frame.minY) < 1 {
+                    event.bottomEdge.touchesCard = true
+                }
+            }
+        }
+    }
+
     /// 檢查日期範圍是否與其他日期範圍重疊
+    ///
+    /// 端點相接（前一筆結束 == 後一筆開始）不算重疊，與 `Event.totalOverlapPeriods` 的掃描線一致；
+    /// `ClosedRange.overlaps` 會把 12:00...12:30 與 12:30...13:00 判成重疊，時段格用真實時間時會被誤濾
     /// - Parameters:
     ///   - date: 要檢查的日期範圍
     ///   - dates: 其他日期範圍陣列
@@ -508,8 +545,7 @@ public final class TimelineView: UIView {
     /// - Returns: 如果重疊則返回 true，否則返回 false
     public class func overlap(date: ClosedRange<Date>, dates: [ClosedRange<Date>], eventGap: CGFloat) -> Bool {
         for element in dates {
-            let overlap = date.overlaps(element)
-            if overlap == true {
+            if date.lowerBound < element.upperBound, element.lowerBound < date.upperBound {
                 return true
             }
         }
@@ -632,9 +668,13 @@ public final class TimelineView: UIView {
                     }
 
                     let x = groupX + style.leadingInset + CGFloat(column) * columnWidth
+                    event.columnIndex = column
+                    event.columnCount = columns.count
                     event.frame = CGRect(x: x, y: startY, width: columnWidth, height: endY - startY)
                 }
             }
+
+            markVerticalEdges(in: groupEvents)
         }
 
         let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000 // 轉換為毫秒

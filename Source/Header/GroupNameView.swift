@@ -17,7 +17,11 @@ class GroupNameView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         let lineHeight = 1 / UIScreen.main.scale
-        bottomSeparator.frame = CGRect(x: 0, y: bounds.height - lineHeight, width: bounds.width, height: lineHeight)
+        // 起點與群組欄對齊，不橫跨左側時間欄
+        bottomSeparator.frame = CGRect(x: style.leadingInset,
+                                       y: bounds.height - lineHeight,
+                                       width: bounds.width - style.leadingInset,
+                                       height: lineHeight)
     }
 
     override func draw(_ rect: CGRect) {
@@ -64,7 +68,11 @@ class GroupNameView: UIView {
 
         // 最後才加，順序即最上層，不必每次 layout 再 bringSubviewToFront
         bottomSeparator.backgroundColor = newStyle.separatorColor
+        // 有外框時上邊已經落在同一條線上，不重複畫
+        bottomSeparator.isHidden = newStyle.contentBorderWidth > 0
         addSubview(bottomSeparator)
+        // 底線起點吃 style.leadingInset，bounds 沒變也要重新 layout
+        setNeedsLayout()
         setNeedsDisplay()
     }
 }

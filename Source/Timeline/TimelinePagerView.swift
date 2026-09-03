@@ -49,6 +49,15 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
     private let timeRulerContainer = UIScrollView()
     private let timeRulerView = TimeRulerView()
 
+    /// 表頭列以下、時間欄右側的時段內容外框，固定在可見範圍不隨內容捲動；
+    /// 只是視覺，點擊與捲動都由下層處理
+    private let contentBorderView: UIView = {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        return view
+    }()
+
     public weak var state: DayViewState? {
         willSet(newValue) {
             state?.unsubscribe(client: self)
@@ -87,6 +96,8 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
         timeRulerContainer.showsVerticalScrollIndicator = false
         timeRulerContainer.addSubview(timeRulerView)
         addSubview(timeRulerContainer)
+        // 最後才加，框線才蓋得住時段內容的邊緣
+        addSubview(contentBorderView)
         timeRulerView.timelineView = vc.timeline
     }
 
@@ -189,7 +200,22 @@ public final class TimelinePagerView: UIView, UIScrollViewDelegate, DayViewState
         super.layoutSubviews()
         pagingViewController.view.frame = bounds
         timeRulerContainer.frame = CGRect(x: 0, y: 0, width: style.leadingInset, height: bounds.height)
+        layoutContentBorder()
         syncTimeRuler()
+    }
+
+    /// 外框左上角貼齊時間欄右緣與第一條刻度線（表頭列下緣再加 verticalInset），
+    /// 往右下涵蓋整個可見範圍
+    private func layoutContentBorder() {
+        contentBorderView.isHidden = style.contentBorderWidth <= 0
+        guard !contentBorderView.isHidden else { return }
+        let top = style.groupNameViewHeight + style.verticalInset
+        contentBorderView.frame = CGRect(x: style.leadingInset,
+                                         y: top,
+                                         width: bounds.width - style.leadingInset,
+                                         height: bounds.height - top)
+        contentBorderView.layer.borderWidth = style.contentBorderWidth
+        contentBorderView.layer.borderColor = style.contentBorderColor.cgColor
     }
 
     private func updateTimeline(_ timeline: TimelineView) {

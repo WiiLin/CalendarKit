@@ -17,6 +17,7 @@ EZPretty iOS 的五個 repo 共用同一份 `.claude/rules/`，**內容逐 byte 
 現有規則檔：
 
 - `.claude/rules/ui-view-structure.md` —— UI 元件結構（可複用區塊抽成 `UIView` 子類、closure `private let` 宣告、`UIStackView.vstack/.hstack` 在宣告處填滿、callback 回傳完整物件、顏色集中到色票檔）
+- `.claude/rules/api-field-contract.md` —— API 欄位契約（NEVER 自創後端欄位名、欄位來源四種、送出後用真實 API 前後 GET 對照驗證、既有欄位優先）
 
 ### 同步鐵律
 
@@ -25,7 +26,7 @@ EZPretty iOS 的五個 repo 共用同一份 `.claude/rules/`，**內容逐 byte 
   ```bash
   cd /Users/wiilin/Documents/iOS/EZPretty
   for d in CalendarKit ezhair-ios ezstore-ios provider-ios ez-framework-ios; do
-    shasum "$d/.claude/rules/ui-view-structure.md"
+    echo "$d: $(cat "$d"/.claude/rules/*.md | shasum | cut -d' ' -f1)"
   done
   ```
 - `CLAUDE.md` 的**共用章節**（本章節、共用邏輯歸屬、commit 規範）同樣五份同步；**專案專屬內容**（build 指令、目錄結構、該 repo 才有的 gotcha）留在各自 `CLAUDE.md`，NEVER 塞進共用 rules 檔。
