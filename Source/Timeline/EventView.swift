@@ -83,6 +83,7 @@ open class EventView: UIView {
         backgroundColor = event.backgroundColor
         layer.borderColor = event.borderColor.cgColor
         layer.borderWidth = event.borderWidth
+        layer.cornerRadius = event.cornerRadius
         color = event.color
         imagesStackView.removeAllArrangedSubviews()
         let imageViews = event.images.map {

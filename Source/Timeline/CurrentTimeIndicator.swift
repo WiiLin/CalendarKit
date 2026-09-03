@@ -2,7 +2,15 @@ import UIKit
 
 @objc public final class CurrentTimeIndicator: UIView {
     private let padding: CGFloat = 3
-    private let leadingInset: CGFloat = 53
+    /// 左側時間欄寬，由 TimelineView 依 style.leadingInset 同步；時間文字寬與線的起點都靠它算
+    var leadingInset: CGFloat = 53 {
+        didSet {
+            timeLabelWidthConstraint?.constant = leadingInset - (3 * padding)
+            setNeedsLayout()
+        }
+    }
+
+    private var timeLabelWidthConstraint: NSLayoutConstraint?
 
     public var calendar: Calendar = .autoupdatingCurrent {
         didSet {
@@ -66,7 +74,9 @@ import UIKit
         // The width of the label is determined by leftInset and padding.
         // The y position is determined by the line's middle.
         timeLabel.translatesAutoresizingMaskIntoConstraints = false
-        timeLabel.widthAnchor.constraint(equalToConstant: leadingInset - (3 * padding)).isActive = true
+        let widthConstraint = timeLabel.widthAnchor.constraint(equalToConstant: leadingInset - (3 * padding))
+        widthConstraint.isActive = true
+        timeLabelWidthConstraint = widthConstraint
         timeLabel.trailingAnchor.constraint(equalTo: line.leadingAnchor, constant: -padding).isActive = true
         timeLabel.centerYAnchor.constraint(equalTo: line.centerYAnchor).isActive = true
         timeLabel.baselineAdjustment = .alignCenters

@@ -74,6 +74,8 @@ public struct DaySelectorStyle {
     
     public var font = UIFont.systemFont(ofSize: 18)
     public var todayFont = UIFont.boldSystemFont(ofSize: 18)
+    /// regular size class 時排在日期左邊的星期文字（DayDateCell）
+    public var weekdayFont = UIFont.systemFont(ofSize: 16)
   
     public init() {}
 }
@@ -123,6 +125,8 @@ public struct TimelineStyle {
     public var verticalInset: CGFloat = 10
     /// 左側時間標籤區域的寬度，事件從這個位置之後開始繪製
     public var leadingInset: CGFloat = 53
+    /// 捲動時固定在頂部的員工名稱／業績列高度
+    public var groupNameViewHeight: CGFloat = 30
     /// 相鄰事件之間的間距（像素）
     public var eventGap: CGFloat = 0
     /// 分組資訊（多人行事曆時，每個人一個 group）
