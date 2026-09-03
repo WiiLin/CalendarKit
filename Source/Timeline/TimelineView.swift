@@ -133,12 +133,18 @@ public final class TimelineView: UIView {
 
         allDayView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 0).isActive = true
         allDayView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 0).isActive = true
-        allDayView.heightAnchor.constraint(equalToConstant: Self.groupNameViewHeight).isActive = true
+        let heightConstraint = allDayView.heightAnchor.constraint(equalToConstant: style.groupNameViewHeight)
+        heightConstraint.isActive = true
+        allDayViewHeightConstraint = heightConstraint
         return allDayView
     }()
 
-    /// 捲動時固定在頂部的員工名稱／業績列高度。
-    /// public 讓 App 端的浮層（如總表整月選日）能定位在此列下方，不遮住員工業績
+    /// 表頭列高跟著 style.groupNameViewHeight，updateStyle 時更新
+    private var allDayViewHeightConstraint: NSLayoutConstraint?
+
+    /// 捲動時固定在頂部的員工名稱／業績列的預設高度。
+    /// 實際高度以 style.groupNameViewHeight 為準；保留 public 讓 App 端的浮層
+    /// （如總表整月選日）沿用預設值定位在此列下方
     public static let groupNameViewHeight: CGFloat = 30
   
     /// 全天視圖的實際高度
@@ -326,6 +332,8 @@ public final class TimelineView: UIView {
         style = newStyle
         invalidateTickYs()
         allDayView.updateStyle(style.allDayStyle)
+        allDayViewHeightConstraint?.constant = style.groupNameViewHeight
+        nowLine.leadingInset = style.leadingInset
         nowLine.updateStyle(style.timeIndicator)
         groupNameView.updateStyle(newStyle)
         allDayView.isHidden = (allDayLayoutAttributes.count == 0 && style.groupCount <= 1)
@@ -390,9 +398,9 @@ public final class TimelineView: UIView {
             context?.setLineWidth(hourLineHeight)
             let xStart: CGFloat = {
                 if rightToLeft {
-                    return bounds.width - 53
+                    return bounds.width - style.leadingInset
                 } else {
-                    return 53
+                    return style.leadingInset
                 }
             }()
             let xEnd: CGFloat = {

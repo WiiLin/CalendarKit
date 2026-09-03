@@ -24,6 +24,8 @@ public final class Event: EventDescriptor {
 
     public var borderColor: UIColor = .clear
     public var borderWidth: CGFloat = 0
+    /// 事件卡片圓角；沿用原本寫死的 2，要膠囊感的 App 自己調大
+    public var cornerRadius: CGFloat = 2
     public var bottomRightText: String?
 
     public init() {}
