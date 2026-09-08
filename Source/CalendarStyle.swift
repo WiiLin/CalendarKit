@@ -127,13 +127,14 @@ public struct TimelineStyle {
     public var leadingInset: CGFloat = 53
     /// 捲動時固定在頂部的員工名稱／業績列高度
     public var groupNameViewHeight: CGFloat = 30
-    /// 事件視圖貼著群組欄左右邊界時的內縮（pt）
+    /// 事件卡片左右貼著群組欄邊線時的內縮（pt）；同時段並排的內側改用 eventGap 的一半。規則見 EventInsetRule
     public var eventHorizontalPadding: CGFloat = 2
-    /// 事件視圖貼著 timeline 頂／底時的內縮（pt）
+    /// 事件卡片上下那一邊落在刻度線上、或是空白時的內縮（pt）；
+    /// 貼著另一張卡且不在線上時改用 eventGap 的一半。規則見 EventInsetRule
     public var eventVerticalPadding: CGFloat = 2
-    /// 相鄰兩筆事件之間的間距（pt），兩筆各出一半；0 表示改用 padding。
-    /// 間距一律在這裡用 pt 表達，不要靠縮 event 的 startDate／endDate 製造留白 ——
-    /// 那會被 verticalDiff 放大成不同比例，也會污染 overlap 判斷與點擊命中範圍
+    /// 同一個小時格裡兩張卡之間的距離（pt），兩張各出一半；0 表示不分開算，四邊都用 padding。
+    /// 留白一律在這裡用 pt 表達，不要靠縮 event 的 startDate／endDate 製造 ——
+    /// 那會被 verticalDiff 放大成不同比例，也會污染 overlap 判斷與點擊命中範圍。規則見 EventInsetRule
     public var eventGap: CGFloat = 0
     /// 表頭列以下、時間欄右側那整塊時段內容的外框線寬，0 表示不畫。
     /// 這個框是獨立的一層，不由表頭下底線與欄分隔線兼任
@@ -147,7 +148,7 @@ public struct TimelineStyle {
     }
 
     var totalGroupWidth: CGFloat {
-        return group.map { $0.width }.reduce(0, {$0 + $1})
+        return group.map { $0.width }.reduce(0) { $0 + $1 }
     }
 
     public var fixWidthGroupCount: Int = 7
@@ -168,7 +169,6 @@ public struct TimelineStyle {
 //        }
 //    }
 
-
     func contentWidth() -> CGFloat {
         return leadingInset + totalGroupWidth
     }
@@ -178,7 +178,7 @@ public struct TimelineStyle {
     }
 
     func groupX(index: Int) -> CGFloat {
-        return group.prefix(index).map { $0.width }.reduce(0, {$0 + $1})
+        return group.prefix(index).map { $0.width }.reduce(0) { $0 + $1 }
     }
 
     public init() {}
@@ -198,12 +198,9 @@ public struct AllDayViewStyle {
     public init() {}
 }
 
-
-
-
 private extension Collection {
     /// Returns the element at the specified index if it is within bounds, otherwise nil.
-    subscript (safe index: Index) -> Element? {
+    subscript(safe index: Index) -> Element? {
         return indices.contains(index) ? self[index] : nil
     }
 }

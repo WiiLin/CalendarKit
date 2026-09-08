@@ -2,15 +2,18 @@
 import CoreGraphics
 import XCTest
 
-/// `EventInsetRule` 是總表版面唯一的算術來源。
+/// 總表版面的算術只有兩層：`VerticalEdge.resolve` 判定每一邊落在什麼上、`EventInsetRule` 把它換成內縮。
+/// 這裡先釘查表，再用整串 pattern 釘判定 —— 會出錯的是判定那層，不是查表。
 ///
 /// 「框架」是每一個小時格：上下是畫出來的刻度線（ezStore 只有整點有線），左右是群組欄邊線。
 /// event 離框架 padding，框架裡面 event 彼此 gap。
 final class EventInsetsTests: XCTestCase {
     private let padding: CGFloat = 12
     private let gap: CGFloat = 5
-    /// 30 分模式：每小時 200，所以 30 分的時段矩形高 100
-    private let slotHeight: CGFloat = 100
+    /// 30 分模式：每小時 200，營業 08:00–21:00，刻度線只在整點
+    private let verticalDiff: CGFloat = 200
+    private let startHour = 8
+    private var tickYs: [CGFloat] { (0 ... 13).map { CGFloat($0) * verticalDiff } }
 
     private var rule: EventInsetRule {
         return EventInsetRule(verticalPadding: padding, horizontalPadding: padding, gap: gap)
@@ -21,16 +24,7 @@ final class EventInsetsTests: XCTestCase {
     private let card = VerticalEdge(touchesCard: true, onTickLine: false)
     private let blank = VerticalEdge.blank
 
-    private func insets(top: VerticalEdge = .blank,
-                        bottom: VerticalEdge = .blank,
-                        columnIndex: Int = 0,
-                        columnCount: Int = 1,
-                        isRightToLeft: Bool = false) -> EventInsets
-    {
-        return rule.insets(top: top, bottom: bottom, columnIndex: columnIndex, columnCount: columnCount, isRightToLeft: isRightToLeft)
-    }
-
-    // MARK: - 每一邊的三種情況
+    // MARK: - 查表：每一邊的四種情況
 
     func testEdgeOnTickLineUsesPadding() {
         XCTAssertEqual(rule.inset(for: onLine), padding)
@@ -54,56 +48,100 @@ final class EventInsetsTests: XCTestCase {
         }
     }
 
-    // MARK: - 實際畫面（30 分模式，整點有線）
+    // MARK: - 整串 pattern：VerticalEdge.resolve + EventInsetRule
 
-    /// 10:00-10:30 / 10:30-11:00：10:30 沒線 → 12 card 5 card 12
+    /// 你截圖的畫面：10:00-11:30 預約卡接 11:30、12:00 預約卡，再接連續時段格
+    func testRealScreen() {
+        let frames = [slot((10, 0), (11, 30)), slot((11, 30), (12, 0)), slot((12, 0), (12, 30)), slot((12, 30), (13, 0))]
+        XCTAssertEqual(pattern(frames), "★12 card 5 card ★24 card 5 card 12★")
+    }
+
+    /// 10:30 沒線 → 12 card 5 card 12
     func testTwoHalfHourCardsInsideOneHour() {
-        let upper = insets(top: onLine, bottom: card)
-        let lower = insets(top: card, bottom: onLine)
-        XCTAssertEqual(upper.top, padding)
-        XCTAssertEqual(upper.bottom + lower.top, gap)
-        XCTAssertEqual(lower.bottom, padding)
+        XCTAssertEqual(pattern([slot((10, 0), (10, 30)), slot((10, 30), (11, 0))]), "★12 card 5 card 12★")
     }
 
-    /// 11:30-12:00 接 12:00-12:30：12:00 有線 → 線的兩側各 12
-    func testTwoCardsMeetingOnTickLine() {
-        let upper = insets(top: card, bottom: cardOnLine)
-        let lower = insets(top: cardOnLine, bottom: card)
-        XCTAssertEqual(upper.bottom, padding, "「共$400 離下面那條線」要是 12")
-        XCTAssertEqual(lower.top, padding)
-        XCTAssertEqual(upper.bottom + lower.top, padding * 2)
+    /// 11:00 有線 → 線的兩側各 12
+    func testTwoFullHourCardsMeetingOnTickLine() {
+        XCTAssertEqual(pattern([slot((10, 0), (11, 0)), slot((11, 0), (12, 0))]), "★12 card ★24 card 12★")
     }
 
-    /// 單獨一張 14:00-14:30：上在線、下是空白 → 12 card 12
+    /// 上在線、下是空白
     func testSingleCard() {
-        let result = insets(top: onLine, bottom: blank)
-        XCTAssertEqual(result.top, padding)
-        XCTAssertEqual(result.bottom, padding)
+        XCTAssertEqual(pattern([slot((14, 0), (14, 30))]), "★12 card 12")
     }
 
-    func testCardHeights() {
-        func height(_ top: VerticalEdge, _ bottom: VerticalEdge) -> CGFloat {
-            let result = insets(top: top, bottom: bottom)
-            return slotHeight - result.top - result.bottom
+    /// 四張 30 分跨過 ★10:00
+    func testFourHalfHourCardsAcrossTickLine() {
+        let frames = [slot((9, 0), (9, 30)), slot((9, 30), (10, 0)), slot((10, 0), (10, 30)), slot((10, 30), (11, 0))]
+        XCTAssertEqual(pattern(frames), "★12 card 5 card ★24 card 5 card 12★")
+    }
+
+    /// 15 分模式一小時內四張：中間三條縫都沒線
+    func testFourQuarterHourCardsInsideOneHour() {
+        let frames = [slot((10, 0), (10, 15)), slot((10, 15), (10, 30)), slot((10, 30), (10, 45)), slot((10, 45), (11, 0))]
+        XCTAssertEqual(pattern(frames), "★12 card 5 card 5 card 5 card 12★")
+    }
+
+    /// 中間隔了 30 分空檔的兩張，各自四邊都是 padding
+    func testCardsSeparatedByBlankAreNotNeighbours() {
+        let edges = VerticalEdge.resolve(frames: [slot((10, 0), (10, 30)), slot((11, 0), (11, 30))], tickYs: tickYs)
+        XCTAssertFalse(edges[0].bottom.touchesCard)
+        XCTAssertFalse(edges[1].top.touchesCard)
+        XCTAssertEqual(edges[0].bottom, .blank, "10:30 沒線也沒卡")
+    }
+
+    /// 不在格線上的時間（10:07-10:52）：兩邊都不是線、也沒貼卡
+    func testOffGridCardGetsPaddingOnBothSides() {
+        let edges = VerticalEdge.resolve(frames: [slot((10, 7), (10, 52))], tickYs: tickYs)
+        XCTAssertEqual(edges[0].top, .blank)
+        XCTAssertEqual(edges[0].bottom, .blank)
+    }
+
+    // MARK: - 判定：並排、容差
+
+    func testSideBySideColumnsAreNotVerticalNeighbours() {
+        let columnWidth: CGFloat = 200
+        let frames = (0 ..< 3).map { slot((10, 0), (11, 0), x: CGFloat($0) * columnWidth, width: columnWidth) }
+        for edge in VerticalEdge.resolve(frames: frames, tickYs: tickYs) {
+            XCTAssertFalse(edge.top.touchesCard, "並排的欄 x 不重疊，不可互相當成上下鄰居")
+            XCTAssertFalse(edge.bottom.touchesCard)
         }
-        XCTAssertEqual(height(onLine, card), 85.5, "小時格裡的上半張")
-        XCTAssertEqual(height(card, onLine), 85.5, "小時格裡的下半張")
-        XCTAssertEqual(height(onLine, blank), 76, "單獨一張")
-        XCTAssertEqual(height(card, card), 95, "15 分模式下夾在中間的卡")
+    }
+
+    func testTouchToleranceIsOnePoint() {
+        let upper = CGRect(x: 0, y: 0, width: 200, height: 100)
+        let almost = CGRect(x: 0, y: 100.9, width: 200, height: 100)
+        let apart = CGRect(x: 0, y: 101.1, width: 200, height: 100)
+        XCTAssertTrue(VerticalEdge.resolve(frames: [upper, almost], tickYs: [])[0].bottom.touchesCard)
+        XCTAssertFalse(VerticalEdge.resolve(frames: [upper, apart], tickYs: [])[0].bottom.touchesCard)
+    }
+
+    func testTickToleranceIsHalfPoint() {
+        let frame = CGRect(x: 0, y: 0, width: 200, height: 100)
+        XCTAssertTrue(VerticalEdge.resolve(frames: [frame], tickYs: [100.4])[0].bottom.onTickLine)
+        XCTAssertFalse(VerticalEdge.resolve(frames: [frame], tickYs: [100.6])[0].bottom.onTickLine)
+    }
+
+    /// 跨日 event 的 endY 被 clamp 到 timeline 底，那不是刻度線位置
+    func testClampedBottomIsBlank() {
+        let bottomOfTimeline = CGFloat(14) * verticalDiff
+        let frame = CGRect(x: 0, y: slot((20, 0), (21, 0)).minY, width: 200, height: bottomOfTimeline - slot((20, 0), (21, 0)).minY)
+        XCTAssertEqual(VerticalEdge.resolve(frames: [frame], tickYs: tickYs)[0].bottom, .blank)
     }
 
     // MARK: - 水平
 
     func testSingleColumnTouchesBothGroupEdges() {
-        let result = insets()
+        let result = rule.insets(top: .blank, bottom: .blank, columnIndex: 0, columnCount: 1)
         XCTAssertEqual(result.left, padding)
         XCTAssertEqual(result.right, padding)
     }
 
     func testSideBySideColumns() {
-        let first = insets(columnIndex: 0, columnCount: 3)
-        let middle = insets(columnIndex: 1, columnCount: 3)
-        let last = insets(columnIndex: 2, columnCount: 3)
+        let first = rule.insets(top: .blank, bottom: .blank, columnIndex: 0, columnCount: 3)
+        let middle = rule.insets(top: .blank, bottom: .blank, columnIndex: 1, columnCount: 3)
+        let last = rule.insets(top: .blank, bottom: .blank, columnIndex: 2, columnCount: 3)
         XCTAssertEqual(first.left, padding)
         XCTAssertEqual(first.right, gap / 2)
         XCTAssertEqual(middle.left, gap / 2)
@@ -113,14 +151,8 @@ final class EventInsetsTests: XCTestCase {
         XCTAssertEqual(first.right + middle.left, gap, "並排兩張卡之間也是 gap")
     }
 
-    func testSideBySideDoesNotAffectVertical() {
-        let middle = insets(top: onLine, bottom: onLine, columnIndex: 1, columnCount: 3)
-        XCTAssertEqual(middle.top, padding)
-        XCTAssertEqual(middle.bottom, padding)
-    }
-
     func testRightToLeftSwapsHorizontalInsets() {
-        let first = insets(columnIndex: 0, columnCount: 3, isRightToLeft: true)
+        let first = rule.insets(top: .blank, bottom: .blank, columnIndex: 0, columnCount: 3, isRightToLeft: true)
         XCTAssertEqual(first.right, padding, "RTL 時第一欄在畫面右側")
         XCTAssertEqual(first.left, gap / 2)
     }
@@ -134,5 +166,40 @@ final class EventInsetsTests: XCTestCase {
         XCTAssertEqual(result.bottom, 2)
         XCTAssertEqual(result.left, 2)
         XCTAssertEqual(result.right, 2)
+    }
+
+    // MARK: - Helpers
+
+    private func slot(_ from: (Int, Int), _ to: (Int, Int), x: CGFloat = 0, width: CGFloat = 200) -> CGRect {
+        func y(_ time: (Int, Int)) -> CGFloat {
+            return CGFloat(time.0 - startHour) * verticalDiff + CGFloat(time.1) * verticalDiff / 60
+        }
+        return CGRect(x: x, y: y(from), width: width, height: y(to) - y(from))
+    }
+
+    /// 印成「★12 card 5 card ★24 card 12★」：數字是留白／縫，★ 標在刻度線那一側
+    private func pattern(_ frames: [CGRect]) -> String {
+        let edges = VerticalEdge.resolve(frames: frames, tickYs: tickYs)
+        let cards = zip(frames, edges).map { frame, edge -> CGRect in
+            let insets = rule.insets(top: edge.top, bottom: edge.bottom, columnIndex: 0, columnCount: 1)
+            return CGRect(x: frame.minX + insets.left,
+                          y: frame.minY + insets.top,
+                          width: frame.width - insets.left - insets.right,
+                          height: frame.height - insets.top - insets.bottom)
+        }
+        func number(_ value: CGFloat) -> String {
+            return value == value.rounded() ? String(Int(value)) : String(describing: value)
+        }
+        var parts: [String] = [(edges[0].top.onTickLine ? "★" : "") + number(cards[0].minY - frames[0].minY)]
+        for index in frames.indices {
+            parts.append("card")
+            if index < frames.count - 1 {
+                let star = edges[index].bottom.onTickLine ? "★" : ""
+                parts.append(star + number(cards[index + 1].minY - cards[index].maxY))
+            } else {
+                parts.append(number(frames[index].maxY - cards[index].maxY) + (edges[index].bottom.onTickLine ? "★" : ""))
+            }
+        }
+        return parts.joined(separator: " ")
     }
 }

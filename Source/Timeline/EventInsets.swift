@@ -31,6 +31,36 @@ public struct VerticalEdge: Equatable {
     }
 
     public static let blank = VerticalEdge(touchesCard: false, onTickLine: false)
+
+    /// 同一個群組欄的時段矩形全算完後，判定每一個矩形的上下緣落在什麼上。
+    /// 抽成純函式是為了讓「誰貼著誰、哪個 y 算在線上」這段進得了測試 —— 會出錯的是這裡，不是查表
+    ///
+    /// - Parameters:
+    ///   - frames: 同一個群組欄裡每一筆的時段矩形（未內縮），並排的欄位 x 不同
+    ///   - tickYs: 畫出來的刻度線 y
+    /// - Returns: 與 `frames` 同序
+    public static func resolve(frames: [CGRect], tickYs: [CGFloat]) -> [(top: VerticalEdge, bottom: VerticalEdge)] {
+        func isOnTick(_ y: CGFloat) -> Bool {
+            return tickYs.contains { abs($0 - y) < 0.5 }
+        }
+        var result = frames.map { frame in
+            (top: VerticalEdge(touchesCard: false, onTickLine: isOnTick(frame.minY)),
+             bottom: VerticalEdge(touchesCard: false, onTickLine: isOnTick(frame.maxY)))
+        }
+        for (index, frame) in frames.enumerated() {
+            for (otherIndex, other) in frames.enumerated() where otherIndex != index {
+                // 水平沒有交集就是並排的另一欄，上下相接也不算貼著
+                guard frame.minX < other.maxX, other.minX < frame.maxX else { continue }
+                if abs(frame.minY - other.maxY) < 1 {
+                    result[index].top.touchesCard = true
+                }
+                if abs(frame.maxY - other.minY) < 1 {
+                    result[index].bottom.touchesCard = true
+                }
+            }
+        }
+        return result
+    }
 }
 
 /// 算 `EventInsets` 的規則。

@@ -508,29 +508,13 @@ public final class TimelineView: UIView {
 //    }
     }
 
-    /// 算完同一個群組欄所有 frame 後，標記每一張卡的上下緣落在什麼上：
-    /// 有沒有貼著另一張卡（frame 相接且水平有交集）、有沒有落在畫出來的刻度線上。
-    /// 刻度線只在 `times` 有的位置（ezStore 是整點），半點的時段邊界不算線
+    /// 算完同一個群組欄所有 frame 後，把每一張卡的上下緣落在什麼上寫回 attributes。
+    /// 判定本體在 `VerticalEdge.resolve`，這裡只負責取 frame、寫回
     private func markVerticalEdges(in events: [EventLayoutAttributes]) {
-        let ticks = tickYs
-        func isOnTick(_ y: CGFloat) -> Bool {
-            return ticks.contains { abs($0 - y) < 0.5 }
-        }
-        for event in events {
-            event.topEdge = VerticalEdge(touchesCard: false, onTickLine: isOnTick(event.frame.minY))
-            event.bottomEdge = VerticalEdge(touchesCard: false, onTickLine: isOnTick(event.frame.maxY))
-        }
-        for event in events {
-            for other in events where other !== event {
-                // 水平沒有交集就不是同一欄，上下相接也不算貼著
-                guard event.frame.minX < other.frame.maxX, other.frame.minX < event.frame.maxX else { continue }
-                if abs(event.frame.minY - other.frame.maxY) < 1 {
-                    event.topEdge.touchesCard = true
-                }
-                if abs(event.frame.maxY - other.frame.minY) < 1 {
-                    event.bottomEdge.touchesCard = true
-                }
-            }
+        let edges = VerticalEdge.resolve(frames: events.map { $0.frame }, tickYs: tickYs)
+        for (event, edge) in zip(events, edges) {
+            event.topEdge = edge.top
+            event.bottomEdge = edge.bottom
         }
     }
 
