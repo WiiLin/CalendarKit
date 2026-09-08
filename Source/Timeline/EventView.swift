@@ -32,7 +32,6 @@ open class EventView: UIView {
         return label
     }()
     
-
     override public init(frame: CGRect) {
         super.init(frame: frame)
         configure()
@@ -50,7 +49,6 @@ open class EventView: UIView {
         addSubview(imagesStackView)
         addSubview(bottomRightLabel)
 
-
         imagesStackView.translatesAutoresizingMaskIntoConstraints = false
         bottomRightLabel.translatesAutoresizingMaskIntoConstraints = false
         let padding: CGFloat = 3
@@ -58,11 +56,10 @@ open class EventView: UIView {
             imagesStackView.topAnchor.constraint(equalTo: topAnchor, constant: padding),
             imagesStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding),
             bottomRightLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -padding),
-            bottomRightLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding)
+            bottomRightLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding),
         ])
         layer.cornerRadius = 2
         clipsToBounds = true
-  
     }
 
     public func updateWithDescriptor(event: EventDescriptor) {
@@ -90,9 +87,9 @@ open class EventView: UIView {
             let imageView = UIImageView(image: $0)
             imageView.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
-                  imageView.widthAnchor.constraint(equalToConstant: EventView.imageSize.width),
-                  imageView.heightAnchor.constraint(equalToConstant: EventView.imageSize.height)
-              ])
+                imageView.widthAnchor.constraint(equalToConstant: EventView.imageSize.width),
+                imageView.heightAnchor.constraint(equalToConstant: EventView.imageSize.height),
+            ])
             return imageView
         }
         imagesStackView.addArrangedSubviews(imageViews)
@@ -124,12 +121,26 @@ open class EventView: UIView {
         super.layoutSubviews()
         let imageWidth = Self.imageSize.width
         let padding = 3.0
-        let hasBottomText = !(bottomRightLabel.text?.isEmpty ?? true)
-        let bottomReserved = hasBottomText ? bottomRightLabel.intrinsicContentSize.height + padding : 0
         textView.frame = CGRect(x: bounds.minX + padding,
                                 y: bounds.minY,
                                 width: bounds.width - padding - imageWidth - padding,
-                                height: bounds.height - bottomReserved)
+                                height: bounds.height)
+
+        let insets = textView.textContainerInset
+        let lineBottoms = lineFragmentBottoms()
+        // 放不下「一行文字 + 右下角文字」時右下角讓位，矮卡片只留第一行
+        let hasBottomText = !(bottomRightLabel.text?.isEmpty ?? true)
+        let labelHeight = bottomRightLabel.intrinsicContentSize.height
+        let showsBottomText = hasBottomText
+            && bounds.height >= insets.top + (lineBottoms.first ?? 0) + labelHeight + padding
+        bottomRightLabel.isHidden = !showsBottomText
+        if showsBottomText {
+            textView.frame.size.height -= labelHeight + padding
+        }
+
+        // 只畫放得下的整行，最後一行不露半截
+        let available = textView.frame.height - insets.top - insets.bottom
+        textView.textContainer.maximumNumberOfLines = max(1, lineBottoms.filter { $0 <= available + 0.5 }.count)
 
         if frame.minY < 0 {
             var textFrame = textView.frame
@@ -138,8 +149,20 @@ open class EventView: UIView {
             textView.frame = textFrame
         }
     }
-}
 
+    /// 以目前寬度排版後每一行的下緣（相對文字起點），高度不限，用來決定放得下幾行
+    private func lineFragmentBottoms() -> [CGFloat] {
+        let container = textView.textContainer
+        container.maximumNumberOfLines = 0
+        let layoutManager = textView.layoutManager
+        layoutManager.ensureLayout(for: container)
+        var bottoms: [CGFloat] = []
+        layoutManager.enumerateLineFragments(forGlyphRange: layoutManager.glyphRange(for: container)) { _, usedRect, _, _, _ in
+            bottoms.append(usedRect.maxY)
+        }
+        return bottoms
+    }
+}
 
 extension UIStackView {
     func addArrangedSubviews(_ views: [UIView]) {

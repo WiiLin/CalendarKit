@@ -643,12 +643,12 @@ public final class TimelineView: UIView {
                     guard let column = eventColumns[ObjectIdentifier(event)] else { continue }
 
                     let startY = dateToY(event.descriptor.datePeriod.lowerBound)
-                    var endY = dateToY(event.descriptor.datePeriod.upperBound)
-
-                    // 跨日 event 的 endY 會小於 startY，clamp 到 timeline 底部
+                    // 超出營業時段的 event 收在 timeline 底部，不讓卡片伸到捲不到的地方
                     // https://redmine.ezpretty.com.tw/issues/24342
+                    let bottomY = CGFloat(style.dateStyle.count) * style.verticalDiff + style.verticalInset
+                    var endY = min(dateToY(event.descriptor.datePeriod.upperBound), bottomY)
                     if endY < startY {
-                        endY = CGFloat(style.dateStyle.count) * style.verticalDiff + style.verticalInset
+                        endY = bottomY
                     }
 
                     let x = groupX + style.leadingInset + CGFloat(column) * columnWidth
@@ -739,11 +739,13 @@ public final class TimelineView: UIView {
     }
 
     private func tickY(for timeString: String, index: Int) -> CGFloat {
+        // "24:00" 這種超過一天的刻度（打烊在午夜的店）折成隔天，才能與跨日事件的 dateToY 對得上
         guard let minutes = Self.minutes(fromHHmm: timeString),
-              let tickDate = calendar.date(bySettingHour: minutes / 60,
+              let day = calendar.date(byAdding: .day, value: minutes / (24 * 60), to: date),
+              let tickDate = calendar.date(bySettingHour: (minutes / 60) % 24,
                                            minute: minutes % 60,
                                            second: 0,
-                                           of: date)
+                                           of: day)
         else {
             return style.verticalInset + CGFloat(index) * style.verticalDiff
         }
@@ -765,7 +767,7 @@ public final class TimelineView: UIView {
     public func dateToY(_ date: Date) -> CGFloat {
         let provisionedDate = date.dateOnly(calendar: calendar)
         let timelineDate = self.date.dateOnly(calendar: calendar)
-        var dayOffset: CGFloat = 0
+        var dayOffset = 0
         if provisionedDate > timelineDate {
             // 事件結束於下一天
             dayOffset += 1
@@ -773,12 +775,13 @@ public final class TimelineView: UIView {
             // 事件開始於前一天
             dayOffset -= 1
         }
-        let fullTimelineHeight = CGFloat(style.dateStyle.count) * style.verticalDiff
-        let hour = component(component: .hour, from: date)
+        // 跨日以 24 小時折進小時數再換算；營業時段不是全天時 timeline 高度不等於一天，
+        // 拿它當一天的位移會把隔天 00:15 算到營業時段中間
+        let hour = component(component: .hour, from: date) + 24 * dayOffset
         let minute = component(component: .minute, from: date)
         let hourY = CGFloat(style.dateStyle.real24Hour(original24Hour: hour)) * style.verticalDiff + style.verticalInset
         let minuteY = CGFloat(minute) * style.verticalDiff / 60
-        return hourY + minuteY + fullTimelineHeight * dayOffset
+        return hourY + minuteY
     }
 
     /// 將 Y 座標轉換為日期
