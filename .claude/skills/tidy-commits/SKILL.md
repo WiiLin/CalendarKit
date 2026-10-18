@@ -162,13 +162,23 @@ git rev-parse HEAD^{tree} "backup/$BR^{tree}"  # 兩個 hash MUST 相同
 - **MUST 寫「為什麼不那樣做」**：刻意不收攏、不抽象、不加分支的地方要交代理由，否則 reviewer 會重問一次。
 - **subject 的 `[Module]` MUST 對應該 commit 真正動到的模組**。拆分後每個 commit 的模組可能不同，**NEVER** 整批沿用原本那一個。
 
+### 🔴 數量宣稱 MUST 用指令數過並貼出指令
+
+- 任何寫進 commit message / 報告 / PR 的**數量**（N 個呼叫點、N 處落差、N 個檔案、N 條測試）**MUST 用指令實際數過**，**NEVER** 憑印象、憑「我剛剛看過」、憑目測掃一遍。這種錯特別毒：**它讓 reviewer 與 QA 以為稽核已經做過了。**
+- **MUST 把數出來的指令一起寫進文件**（如 `grep -rn "foo()" <原始碼目錄> | grep -vc "func foo"`），讓下一個人能重跑驗證。數字沒有附指令 = 沒數過。
+- **MUST 檢查 grep pattern 本身會不會誤判**，兩種都要想過：
+  - **多算**：pattern 命中了語意不同的行。
+  - **少算**：目標不含 pattern 字串。
+  - ⚠️ 這兩個錯會**互相抵銷**，湊出一個看起來很合理的數字 —— 比單純數錯更難察覺。**MUST 逐條列出命中項並肉眼確認**，NEVER 只看 `grep -c` 的總數。
+- 數不出精確值時 **MUST 寫「至少 N 個」或直接列舉**，**NEVER** 寫一個沒把握的確數。
+
 ---
 
 ## 產出（回報 MUST 包含）
 
 1. **整理後的 commit 清單**：`<sha> <subject>` + 各自檔案，並標出每個對應到哪一級階梯。
 2. **前後比對證據**：三項檢查的實際輸出，含兩個相同的 tree hash。
-3. **逐 commit gate 結果**：`git rebase <base> --exec '<gate>'` 全綠。
+3. **逐 commit gate 結果**：`git rebase <base> --exec '<gate>'` 全綠（或明講跳過了哪幾個）。
 4. **備份 ref 名稱**，並說明未刪除。
 5. **僅限會被 squash 合併的分支**：squash commit body 草稿。
 
