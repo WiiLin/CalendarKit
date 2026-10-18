@@ -1,3 +1,0 @@
-[submodule ".agents/shared"]
-	path = .agents/shared
-	url = git@github.com:wiilinxxxxxx/ezpretty-agent-guidelines.git

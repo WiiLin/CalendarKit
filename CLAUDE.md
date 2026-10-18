@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 共用 AI 指引（submodule）
+## 共用 AI 指引（symlink 到兄弟目錄）
 
 @.agents/shared/GUIDELINES.md
 
-正本在 `ezpretty-agent-guidelines`（`.agents/shared/`，git submodule）；`.claude/rules` 與 `.claude/skills/{code-review,tidy-commits,commit-message,_shared}` 是指進去的 symlink。**clone 後 MUST `git submodule update --init`**，否則 rules 與 skills 靜默不載入——開工前 `ls .agents/shared/rules` 確認非空。改共用指引：在 `.agents/shared/` 內 commit、push，再回本 repo `git add .agents/shared` 做 bump commit。
+正本是兄弟目錄 `../ezpretty-agent-guidelines`（clone 自 github `wiilinxxxxxx/ezpretty-agent-guidelines`），`.agents/shared` 是指向它的 symlink；`.claude/rules` 與 `.claude/skills/{code-review,tidy-commits,commit-message,release-merge,_shared}` 再指進去。**換機器要先在 `EZPretty/` 同層 clone 該 repo**，否則 rules 與 skills 靜默不載入——開工前 `ls .agents/shared/rules` 確認非空。改共用指引：直接在該 clone 改、commit、push，五個 repo 立即生效，沒有 bump 這回事；新增 skill 時各 repo 補一個 `.claude/skills/<name>` symlink。
 
 ## Project Overview
 
