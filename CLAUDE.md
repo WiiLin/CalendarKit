@@ -2,45 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 共用規則檔（五個 repo 必須同步）
+## 共用 AI 指引（submodule）
 
-EZPretty iOS 的五個 repo 共用同一份 `.claude/rules/`、`.claude/skills/{code-review,tidy-commits,commit-message,_shared}/`、`.claude/docs/`，**內容逐 byte 相同**：
+@.agents/shared/GUIDELINES.md
 
-| repo | 角色 | 路徑 |
-|---|---|---|
-| `provider-ios` | iPhone 店家 App（ezDesigner） | `/Users/wiilin/Documents/iOS/EZPretty/provider-ios` |
-| `ezstore-ios` | iPad POS（ezStore） | `/Users/wiilin/Documents/iOS/EZPretty/ezstore-ios` |
-| `ez-framework-ios` | 共用 SPM package（EZPrinterKit） | `/Users/wiilin/Documents/iOS/EZPretty/ez-framework-ios` |
-| `ezhair-ios` | 消費者端 App（ezHair） | `/Users/wiilin/Documents/iOS/EZPretty/ezhair-ios` |
-| `CalendarKit` | 行事曆 UI library（fork） | `/Users/wiilin/Documents/iOS/EZPretty/CalendarKit` |
-
-現有規則檔（每輪自動載入）：
-
-- `.claude/rules/ai-core-rules.md` —— AI 行為鐵律（NEVER / MUST）、任務分級、動手前宣告、抽象化與送審前自檢、呼叫點稽核、Post-Edit Verification、Checkpoint
-- `.claude/rules/evidence-driven-bugfix.md` —— 證據驅動除錯 8 步法、靜默失敗四層定位、wiring test 與 sabotage 鐵律
-- `.claude/rules/session-retrospective.md` —— 任務結束前把通則回寫 rules / skill / CLAUDE.md（本專案群不用 memory 系統）
-- `.claude/rules/ui-view-structure.md` —— UI 元件結構（可複用區塊抽成 `UIView` 子類、closure `private let` 宣告、`UIStackView.vstack/.hstack` 在宣告處填滿、callback 回傳完整物件、顏色集中到色票檔）
-- `.claude/rules/api-field-contract.md` —— API 欄位契約（NEVER 自創後端欄位名、欄位來源四種、送出後用真實 API 前後 GET 對照驗證、既有欄位優先）
-
-共用 skill 與文件：
-
-- `.claude/skills/code-review/` —— 審查引擎，合併前 local review 迴圈走它；`references/` 含 STANDARDS / TESTING / CONVENTIONS / OUTPUT-FORMAT
-- `.claude/skills/tidy-commits/`、`.claude/skills/commit-message/` —— 整份共用，不含任何 repo 專屬段落；gate 指令、commit type 一律讀該 repo `CLAUDE.md` 與 commit-message skill
-- `.claude/skills/_shared/skill-template.md` —— 新 skill 一律從這份範本起（7 段式提示契約）
-- `.claude/docs/ai-engineer-persona.md` —— **僅當任務是「寫／改 skill、rules、本指引體系」時才讀**；寫 Swift / 修 bug NEVER 需要它
-
-### 同步鐵律
-
-- 改動任一 repo 的共用檔，**MUST 同步套用到其餘四個**，NEVER 只改一邊。
-- 同步後 **MUST 用 checksum 驗證五份逐 byte 相同**（五行輸出的 hash 必須一樣）：
-  ```bash
-  cd /Users/wiilin/Documents/iOS/EZPretty
-  for d in CalendarKit ezhair-ios ezstore-ios provider-ios ez-framework-ios; do
-    echo "$d: $(cat "$d"/.claude/rules/*.md "$d"/.claude/skills/code-review/SKILL.md "$d"/.claude/skills/code-review/references/*.md "$d"/.claude/skills/tidy-commits/SKILL.md "$d"/.claude/skills/commit-message/SKILL.md "$d"/.claude/skills/_shared/*.md "$d"/.claude/docs/*.md | shasum | cut -d' ' -f1)"
-  done
-  ```
-- `CLAUDE.md` 的**共用章節**（本章節、共用邏輯歸屬、commit 規範）同樣五份同步；**專案專屬內容**（build 指令、目錄結構、該 repo 才有的 gotcha）留在各自 `CLAUDE.md`，NEVER 塞進共用 rules 檔。
-- 規則檔每輪都會載入，**膨脹本身就是傷害**：新增規則優先併入既有條目、案例只留一行 tell（`session-retrospective.md` Step 2）。
+正本在 `ezpretty-agent-guidelines`（`.agents/shared/`，git submodule）；`.claude/rules` 與 `.claude/skills/{code-review,tidy-commits,commit-message,_shared}` 是指進去的 symlink。**clone 後 MUST `git submodule update --init`**，否則 rules 與 skills 靜默不載入——開工前 `ls .agents/shared/rules` 確認非空。改共用指引：在 `.agents/shared/` 內 commit、push，再回本 repo `git add .agents/shared` 做 bump commit。
 
 ## Project Overview
 
