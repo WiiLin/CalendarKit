@@ -6,6 +6,8 @@ user-invocable: true
 
 # 整理 Commit —— 讓主管由淺入深讀懂修復方向
 
+> **EZPretty iOS 五個 repo 共用正本，五份內容逐 byte 相同。** 改這份 = 五份一起改，見各 repo `CLAUDE.md` 的「共用規則檔」章節。本檔不含任何 repo 專屬指令：**gate 指令、目錄名、保護分支一律讀該 repo 的 `CLAUDE.md`**。
+
 > 目標讀者是**主管 / reviewer**，不是作者自己。他們要能**照著 commit 順序一路讀下去，就看懂「問題是什麼 → 怎麼修 → 為什麼這樣修 → 留下什麼」**，而不是被迫在 diff 裡自己拼湊。
 
 **整理 commit 只准動歷史，NEVER 動內容。** 這是本 skill 的定義，也是驗收標準。
@@ -14,8 +16,13 @@ user-invocable: true
 
 ## 什麼時候值得整理
 
-本專案是上游 CalendarKit 的**客製 fork**，客製 commit 會長期疊在主線上，日後 rebase 上游新版時要逐個重放 ——
-**每個 commit 越小越聚焦，rebase 衝突越好解**，這是本專案整理 commit 的第一理由。
+本專案群三類 repo 各有理由：
+
+- **Obj-C / Swift 混合的 App**（provider / ezstore / ezhair）：一個功能常同時動到 `.m` 舊 API 層、Swift 新程式、xib 與 assets——拆清楚才分得出「哪一刀改了行為」與「哪一刀只是搬家」。
+- **共用 SPM package**（ez-framework-ios）：一次改動同時影響兩個 App——哪個 App 出事時才追得出是哪一刀。
+- **上游 fork**（CalendarKit）：客製 commit 長期疊在主線上，日後 rebase 上游新版要逐個重放——commit 越小越聚焦，衝突越好解。
+
+**合併方式決定整理的成果留不留得住** —— 本專案群走 `git merge --no-ff <feature>` 進 `release/vX.Y` 或 develop 系分支（見 `git log`），每個 commit 完整留在目標分支上；squash 則全部壓平（見下方例外）。**動手前 MUST 先確認這次要怎麼合**，NEVER 憑猜測。
 
 它同時幫上：
 
@@ -38,8 +45,10 @@ user-invocable: true
   | 1 | 前置整理 / 重構 | `refactor` / `style` | 不改行為的鋪路，先獨立出來，讓後面的行為變更 diff 乾淨 |
   | 2 | 根因修復 | `fix` / `feat` | 真正改行為的那一刀，最小、最聚焦。**主管只看這個 commit 就懂改了什麼** |
   | 3 | 測試 | `test` | 只有在測試**不是**跟著第 2 步一起進去時才獨立（見下方硬條款） |
-  | 4 | 契約 / 文件 | `docs` | spec、API 契約、文案、`CLAUDE.md` |
+  | 4 | 契約 / 文件 | `docs` | API 契約、文案、`CLAUDE.md` |
   | 5 | 版控周邊 | `chore` | 版號、依賴、tooling |
+
+  > type 以 [`commit-message` skill](../commit-message/SKILL.md) 為準；舊歷史的 `R` 等同 `refactor`，整理時一律改寫成現行 type，NEVER 自創新 type。
 
 - **MUST 整理掉「前後反覆修改」的痕跡。** 同一段 code 在本次開發改了又改、review 後又修一次 → **一律折回它該屬於的那個 commit**。**NEVER** 讓 `Fix typo`、`Apply review feedback`、`Correct previous commit`、`WIP` 這種 commit 留在歷史上 —— 那是作者的試錯過程，不是修復脈絡。
 - **每個 commit MUST 能單獨讀懂**：subject 說做了什麼，body 說**為什麼**。主管不必回頭看前一個 commit 才知道這個在幹嘛。
@@ -47,17 +56,20 @@ user-invocable: true
 
 ### 🔴 硬條款：每個 commit MUST 自己過 gate
 
-本專案的 gate：
-
-```bash
-swiftformat Source/
-swift build
-```
+gate ＝ **該 repo `CLAUDE.md` 的 Build／驗證章節指令**（`swiftformat <目錄>` ＋ 編譯；有測試的 repo 加測試）。動手前 MUST 先把它讀出來，NEVER 憑記憶寫 xcodebuild 參數——各 repo 的 workspace、scheme、sdk 都不同，provider 甚至**只能 device build**（simulator link 必失敗是既有狀況，不是整理壞了，誤判會白白拆掉正確的歷史）。
 
 整理後的**每一個** commit 都 MUST 能單獨通過它 —— 任何一個紅的，都會變成別人 bisect 時踩到的地雷。
 
 - **regression test 與修復它的 code MUST 放同一個 commit。** 先寫 Red test 是**開發順序，不是 commit 順序** —— 把 Red test 單獨切一個 commit，等於在歷史上留一個測試是紅的狀態。
-- **生成物 / 鎖定檔 MUST 跟著它的來源檔同一個 commit**：`Package.resolved` 跟著 `Package.swift` 的依賴變更、`Localizations/*.lproj` 跟著它翻譯的那段 code。分開切會讓中間的 commit 編不過。
+- **生成物 / 鎖定檔 MUST 跟著它的來源檔同一個 commit**：`Podfile.lock` 跟著 `Podfile`、`Package.resolved` 跟著 `Package.swift` 的依賴變更、`Binaries/` 的 xcframework 跟著它的 target 設定、`Localizations/*.lproj` 跟著它翻譯的那段 code。分開切會讓中間的 commit 編不過。
+- **xib / storyboard 的 outlet 變更 MUST 跟著用到它的 Swift / ObjC 檔同一個 commit** —— 分開切會讓中間的 commit 在執行期炸 `setValue:forUndefinedKey:`，而**編譯是過的**，gate 抓不到。
+- **`project.pbxproj` 的變更跟著它的來源檔走**：用 `PBXFileSystemSynchronizedRootGroup` 的目錄新增檔案不會動到 pbxproj，但手動加進 target 的資源 / ObjC 檔會。
+- **沒有測試套件的 repo**（如 CalendarKit，見其 `CLAUDE.md`）gate 只涵蓋 format + build，gate 綠**不等於**行為沒壞 —— 拆 commit 時要比有測試的 repo 更保守。
+
+### 動到 ez-framework-ios 時
+
+共用 SPM package 的改動在**另一個 repo**，本 repo 的 commit 整理管不到它。
+**MUST 分別整理三個 repo（ez-framework-ios / ezstore-ios / provider-ios）各自的分支**，並在回報中說明彼此的相依順序（framework 先合）。
 
 ---
 
@@ -68,14 +80,14 @@ swift build
 ### 動手前 MUST 備份 —— 備份分支一律放 `backup/` 路徑，鏡射原分支名
 
 ```bash
-BR=$(git rev-parse --abbrev-ref HEAD)   # 例：wii/feat/group-name
-git branch -f "backup/$BR" HEAD         # →  backup/wii/feat/group-name
+BR=$(git rev-parse --abbrev-ref HEAD)   # 例：feat/#26133
+git branch -f "backup/$BR" HEAD         # →  backup/feat/#26133
 git rev-parse HEAD^{tree}               # 記下整理前的 tree hash
 ```
 
 - **MUST 用 `backup/` 前綴**，**NEVER** 用 `backup-xxx`、`tmp`、`old` 這種散在根層的名字 —— 全部收在 `backup/` 底下，`git branch --list 'backup/*'` 一眼看完、要清也一次清得乾淨，且永遠不會與真正的工作分支混在同一層。
 - 名稱 **MUST 鏡射原分支完整路徑**（`backup/<原分支名>`），光看 ref 名就知道它備份的是誰。同一支分支整理第二次 → `backup/<原分支名>-2`，**NEVER** 覆蓋掉上一份備份。
-- ⚠️ git ref 是檔案系統路徑，`backup/a/b` 與 `backup/a` **不能同時存在**（D/F conflict，`git branch` 會直接拒絕）。撞到時先 `git branch -D` 清掉那個不合命名慣例的舊 ref，或改用 `backup/<原分支名>-2`。
+- ⚠️ git ref 是檔案系統路徑，`backup/a/b` 與 `backup/a` **不能同時存在**（D/F conflict，`git branch` 會直接拒絕）。本專案群同時有 `feat/#26133` 與 `wii/feat/#25807` 兩種命名，撞到時先 `git branch -D` 清掉不合命名慣例的舊 ref，或改用 `backup/<原分支名>-2`。
 - 備份分支是**純本機安全網**，**NEVER** push 上遠端。
 
 ### 整理後 MUST 前後比對，三項全過才算完成
@@ -110,7 +122,8 @@ git rev-parse HEAD^{tree} "backup/$BR^{tree}"  # 兩個 hash MUST 相同
 
 - **MUST 先列出「整理後的 commit 清單 + 各自檔案」給使用者確認再執行。** 拆法有多種合理解時攤開選項，**NEVER** 默默選一種就改寫歷史。
 - **MUST 確認分支未推上遠端**：`git ls-remote --heads origin <branch>`。已推過的分支要改寫歷史 → **先問使用者**（推過之後必須 `--force-with-lease`，而 force push 屬於不可逆操作，一律先問）。
-- **NEVER 在 `master` / `wii/develop` 上整理。** 那是共用歷史，本專案沒有 hook 會攔你，全靠這條規則。
+- **NEVER 在 `master` / `main` / `develop` / `wii/develop` / `release/*` 上整理。** 那是共用歷史，本專案群沒有 hook 會攔你，全靠這條規則。
+- **MUST 確認工作樹只剩該進去的東西。** `Podfile.lock`、`Package.resolved`、pbxproj 常有與本次無關的既有改動，**NEVER** 讓它們被捲進整理範圍。
 
 ---
 
@@ -143,24 +156,26 @@ git rev-parse HEAD^{tree} "backup/$BR^{tree}"  # 兩個 hash MUST 相同
   git add <第二組檔案> && git commit -F /tmp/msg-b.txt
   git rebase --continue
   ```
+- **有 `.pre-commit-config.yaml` 的 repo，rebase 期間 hook 會跑 swiftformat** —— 若它改動了檔案，該 commit 的內容就跟備份不一致，前後比對會抓到。
+  **MUST 在整理前先跑一次 `swiftformat <該 repo 的原始碼目錄>` 並把格式修正併進原本的 commit**，讓整理過程中 hook 無事可做。
 - **整理完 MUST 逐個 commit 跑 gate**，**NEVER 只在 HEAD 跑一次** —— 只驗 HEAD 照定義驗不到中間狀態，而漏切的生成物 / 依賴變更正是只會在中間爆的問題：
   ```bash
-  git rebase <base> --exec 'swiftformat Source/ && swift build'
+  git rebase <base> --exec '<該 repo CLAUDE.md 的 gate 指令>'
   ```
   逐個 commit 執行，任何一個紅就停在那裡讓你修。
-  > ⚠️ 本專案**沒有測試套件**（見 CLAUDE.md），gate 只涵蓋 format + build；行為驗證走 `CalendarKitDemo/` 手動確認。
-  > 這代表 gate 綠 **不等於** 行為沒壞 —— 拆 commit 時要比有測試的專案更保守。
+  > ⚠️ `xcodebuild` 單次數分鐘，commit 數多時 `--exec` 會跑很久。趕時間可只對「有行為變更」的 commit 跑，
+  > 但 **MUST 在回報中明講跳過了哪幾個**，NEVER 靜默省略。長時間 build 依全域偏好用 osascript 開外部 Terminal 跑。
   > `git status` 乾淨**不是**這件事的證據 —— 它只反映工作樹，與歷史中某個 commit 能不能編過毫無因果關係。
 
 ---
 
 ## Commit message（MUST）
 
-格式一律走 [`commit-message` skill](../commit-message/SKILL.md) 的 `[type][Module] Subject`（英文祈使句），**此處不重抄**。整理時額外要求：
+格式一律走 [`commit-message` skill](../commit-message/SKILL.md) 的 `[type][#票號] 描述`（繁體中文），**此處不重抄**。整理時額外要求：
 
-- **body MUST 逐情境陳述行為變化**（各環境 / 各裝置尺寸 / 新舊版相容 / 各使用者角色），**NEVER** 用「嚴格變好」「不影響其他情境」這種一句總括 —— 總括必然掩蓋反例，而 reviewer 會拿那句話當事實引用。
+- **body MUST 逐情境陳述行為變化**（iPhone / iPad、美業 / 餐飲、新增 / 編輯、各訂單狀態、各付款方式、新舊版相容），**NEVER** 用「嚴格變好」「不影響其他情境」這種一句總括 —— 總括必然掩蓋反例，而 reviewer 會拿那句話當事實引用。
 - **MUST 寫「為什麼不那樣做」**：刻意不收攏、不抽象、不加分支的地方要交代理由，否則 reviewer 會重問一次。
-- **subject 的 `[Module]` MUST 對應該 commit 真正動到的模組**。拆分後每個 commit 的模組可能不同，**NEVER** 整批沿用原本那一個。
+- **subject MUST 對應該 commit 真正動到的範圍**。拆分後每個 commit 的 type / Module 可能不同（鋪路的那刀是 `refactor`、真正修的那刀才是 `fix`），**NEVER** 整批沿用原本那一個。
 
 ### 🔴 數量宣稱 MUST 用指令數過並貼出指令
 
@@ -181,6 +196,7 @@ git rev-parse HEAD^{tree} "backup/$BR^{tree}"  # 兩個 hash MUST 相同
 3. **逐 commit gate 結果**：`git rebase <base> --exec '<gate>'` 全綠（或明講跳過了哪幾個）。
 4. **備份 ref 名稱**，並說明未刪除。
 5. **僅限會被 squash 合併的分支**：squash commit body 草稿。
+6. **僅限有動到 ez-framework-ios**：三個 repo 的分支與相依合併順序。
 
 ---
 

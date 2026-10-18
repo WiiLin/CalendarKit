@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 共用規則檔（五個 repo 必須同步）
 
-EZPretty iOS 的五個 repo 共用同一份 `.claude/rules/`、`.claude/skills/code-review/`、`.claude/skills/_shared/`、`.claude/docs/`，**內容逐 byte 相同**：
+EZPretty iOS 的五個 repo 共用同一份 `.claude/rules/`、`.claude/skills/{code-review,tidy-commits,commit-message,_shared}/`、`.claude/docs/`，**內容逐 byte 相同**：
 
 | repo | 角色 | 路徑 |
 |---|---|---|
@@ -25,7 +25,7 @@ EZPretty iOS 的五個 repo 共用同一份 `.claude/rules/`、`.claude/skills/c
 共用 skill 與文件：
 
 - `.claude/skills/code-review/` —— 審查引擎，合併前 local review 迴圈走它；`references/` 含 STANDARDS / TESTING / CONVENTIONS / OUTPUT-FORMAT
-- `.claude/skills/tidy-commits/`、`.claude/skills/commit-message/` —— 規則本體共用，gate 指令這類專案專屬段落各自保留
+- `.claude/skills/tidy-commits/`、`.claude/skills/commit-message/` —— 整份共用，不含任何 repo 專屬段落；gate 指令、commit type 一律讀該 repo `CLAUDE.md` 與 commit-message skill
 - `.claude/skills/_shared/skill-template.md` —— 新 skill 一律從這份範本起（7 段式提示契約）
 - `.claude/docs/ai-engineer-persona.md` —— **僅當任務是「寫／改 skill、rules、本指引體系」時才讀**；寫 Swift / 修 bug NEVER 需要它
 
@@ -36,7 +36,7 @@ EZPretty iOS 的五個 repo 共用同一份 `.claude/rules/`、`.claude/skills/c
   ```bash
   cd /Users/wiilin/Documents/iOS/EZPretty
   for d in CalendarKit ezhair-ios ezstore-ios provider-ios ez-framework-ios; do
-    echo "$d: $(cat "$d"/.claude/rules/*.md "$d"/.claude/skills/code-review/SKILL.md "$d"/.claude/skills/code-review/references/*.md "$d"/.claude/skills/_shared/*.md "$d"/.claude/docs/*.md | shasum | cut -d' ' -f1)"
+    echo "$d: $(cat "$d"/.claude/rules/*.md "$d"/.claude/skills/code-review/SKILL.md "$d"/.claude/skills/code-review/references/*.md "$d"/.claude/skills/tidy-commits/SKILL.md "$d"/.claude/skills/commit-message/SKILL.md "$d"/.claude/skills/_shared/*.md "$d"/.claude/docs/*.md | shasum | cut -d' ' -f1)"
   done
   ```
 - `CLAUDE.md` 的**共用章節**（本章節、共用邏輯歸屬、commit 規範）同樣五份同步；**專案專屬內容**（build 指令、目錄結構、該 repo 才有的 gotcha）留在各自 `CLAUDE.md`，NEVER 塞進共用 rules 檔。
