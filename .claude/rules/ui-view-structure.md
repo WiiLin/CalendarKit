@@ -32,7 +32,7 @@
 |---|---|---|
 | `provider-ios` | `ezDesigner/ezDesigner/Swift/Extension/UIStackView+Extension.swift` | `Swift/Utils/AppColor.swift` |
 | `ezhair-ios` | `ezHair/ezHair/Swift/Extension/UIStackView+Extensions.swift` | 專案色票 extension |
-| `ezstore-ios` | 尚未建立 —— 首次要用時依下方 canonical 版本新增於 `ezStore/Extensions/` | 專案色票 extension |
+| `ezstore-ios` | `ezStore/Extensions/UIStackView+Extension.swift` | `ezStore/Extensions/UIColor+Toptok.swift` |
 | `ez-framework-ios` | 尚未建立 —— 首次要用時依下方 canonical 版本新增於 `Sources/EZCore/` | `EZCore` 色票 |
 | `CalendarKit` | 尚未建立 —— 首次要用時依下方 canonical 版本新增於 `Source/` | `CalendarStyle` |
 

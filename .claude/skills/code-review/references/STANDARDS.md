@@ -41,15 +41,17 @@
 ### 1. 程式碼品質
 
 - **命名規範**：檢查變數、函數、類別命名是否清晰且符合 Swift / Obj-C 命名慣例
-- **程式碼結構**：檢查函數長度、類別職責是否單一（Single Responsibility Principle）
-- **可讀性**：檢查程式碼是否容易理解
-- **重複程式碼**：識別可以重構的重複邏輯（含跨 provider-ios / ezstore-ios 的重複——該進 framework 的邏輯）
+- **程式碼結構**：檢查函數長度、類別職責是否單一（Single Responsibility Principle）；模組化取平均值——既不一行一函式、也不 200 行巨型函式（`ai-core-rules.md`「抽象化前的自檢」）
+- **可讀性**：檢查程式碼是否容易理解；簡單易懂優先，為了 1% edge case 的大改要退回（N6 比例原則）
+- **重複程式碼 / reuse**：識別可以收攏的重複邏輯（含跨 provider-ios / ezstore-ios 的重複——該進 framework 的邏輯）、有沒有平行造一份既有元件；但變體合併須負責人裁決（相同 ≠ 該共用）
+- **對稱**：同形姊妹功能的 hook / teardown / 分支是否一致
 
 ### 2. Swift 最佳實踐
 
 - **型別安全**：檢查是否充分利用 Swift 的型別系統
 - **Optional 處理**：檢查 optional unwrapping 是否安全（避免無理由的強制 unwrap）
 - **Memory Management**：檢查 retain cycles、weak/unowned 使用是否正確
+- **Protocol 使用**：protocol 只放依賴邊界（印表機 SDK wrapper / 網路 Session / 儲存 / 時間）；內部單一實作的 helper 為了 mock 包 protocol 是 over design（`ai-core-rules.md` POP 判準）
 - **Error Handling**：檢查錯誤處理是否完善（try/catch, Result type）
 - **Access Control**：檢查存取控制（private, fileprivate, internal, public）是否適當
 
@@ -76,6 +78,7 @@
 - **Race Conditions**：檢查多執行緒可能的競態條件
 - **邏輯錯誤**：檢查條件判斷、迴圈邏輯
 - **Edge Cases**：識別未處理的邊界情況
+- **Optional chaining 短路吞掉引數副作用**：`completion?(self.handle(...))` 在 `completion` 為 nil 時**連引數都不求值**，副作用消失且無任何警告。有副作用的呼叫 NEVER 放在 `optional?(…)` 的引數內；帶可選 callback 的公開 API，MUST 確認「不帶 callback」的呼叫端行為
 
 ### 6. 效能問題
 
@@ -155,6 +158,7 @@
 **Delegate Pattern**：
 - ✅ Protocol 繼承 `AnyObject`
 - ✅ 屬性使用 `weak` 修飾符
+- ❌ 強引用導致 retain cycle
 
 **Closure**：
 - ✅ 使用 `[weak self]` 避免 retain cycle
@@ -196,9 +200,9 @@
 
 ## 測試（ez-framework-ios 為主）
 
-- `ez-framework-ios` 有單元測試（Swift Testing 的 `@Test` / `#expect` 與 XCTest 並存）；framework 的新邏輯（版型計算、指令生成、raster 轉換這類純函數）應有測試覆蓋
+- `ez-framework-ios` 有單元測試（**XCTest**，`Tests/EZPrinterKitTests/`；2026-10-18 核對 25 檔皆 `import XCTest`、無 Swift Testing）；framework 的新邏輯（版型計算、指令生成、raster 轉換這類純函數）應有測試覆蓋，審查判準見 `TESTING.md`
 - App repo 測試基礎薄弱，**不要求** App 端變更補單元測試——列為範圍外建議即可
-- 新測試優先用 Swift Testing（`@Test` + `#expect`），測試名稱描述行為
+- 新測試沿用鄰檔框架與命名（情境＋預期），NEVER 要求改寫成 Swift Testing
 
 ## 拒絕的反模式
 

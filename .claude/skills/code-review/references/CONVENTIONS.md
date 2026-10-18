@@ -17,8 +17,13 @@
 
 ### 抽象層級
 - ✅ 不過度抽象、不為假想需求預留設計（YAGNI）
-- ❌ 為了 testability 硬加 Protocol / 抽象層是 over design
+- ✅ 自訂 protocol 放在依賴邊界（印表機 SDK wrapper / 網路 Session / 儲存 / 時間），讓測試端注入 stub——這是「需要時」（`ai-core-rules.md` POP 判準）
+- ❌ 內部單一實作的 helper 為了 testability 硬包 Protocol / 抽象層是 over design
 - ✅ 只在需要時才遵從 protocol（Equatable、Identifiable、Hashable）
+
+### test-only code
+- ❌ 為了測試在 production 埋 `testOnly_` 成員、只有測試會呼叫的 `#if DEBUG` hook、mockData —— must-fix
+- ✅ 測試要的狀態用既有 production API 佈置，或依 POP 判準在依賴邊界放 protocol 讓測試端注入 stub
 
 ### 內部信任邊界
 - ✅ 不為「不可能發生」的情境寫防呆 / fallback / null check
@@ -58,7 +63,7 @@
 ## 權衡決策
 
 ### 可讀性 vs. 抽象
-**選擇：優先可讀性**——接受適度重複，而非過早抽象；偏好行為局部性
+**選擇：優先可讀性**——接受適度重複，而非過早抽象；偏好行為局部性；但同一語意述詞在同一 feature 內只能有一個定義（`ai-core-rules.md`「收攏呼叫點」）
 
 ### 完整性 vs. 實用性
 **選擇：優先實用性**——接受靜默錯誤（非關鍵路徑）；使用 TODO 延後次要功能；專注主要使用者流程
@@ -67,7 +72,7 @@
 **選擇：平衡**——需要時才遵從 protocol；核心資料模型要求類型安全；不濫用 force unwrap
 
 ### 測試覆蓋 vs. 開發速度
-**選擇：分層**——framework（ez-framework-ios）的純邏輯要求測試覆蓋；App repo 不強制
+**選擇：分層**——framework（ez-framework-ios）的純邏輯要求測試覆蓋，重質不重量（判準見 code-review `TESTING.md`）；App repo 不強制
 
 ## 總結
 
