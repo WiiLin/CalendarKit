@@ -158,7 +158,8 @@ public final class SwipeLabelView: UIView, DayViewStateUpdating {
         formatter.dateStyle = .full
         formatter.timeStyle = .none
         formatter.timeZone = timezone
-        formatter.locale = Locale(identifier: Locale.preferredLanguages[0])
+        // 與 DaySymbolsView 的星期列同源（calendar.locale，nil 時即 Locale.current），跟隨 App 實際語言而非裝置系統語言
+        formatter.locale = calendar.locale ?? .current
         return formatter.string(from: date)
     }
 }
