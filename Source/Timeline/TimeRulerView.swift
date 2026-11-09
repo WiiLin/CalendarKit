@@ -33,7 +33,7 @@ final class TimeRulerView: UIView {
 
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineBreakMode = .byWordWrapping
-        paragraphStyle.alignment = .right
+        paragraphStyle.alignment = .center
 
         let attributes: [NSAttributedString.Key: Any] = [
             .paragraphStyle: paragraphStyle,
@@ -42,12 +42,14 @@ final class TimeRulerView: UIView {
         ]
 
         let isRightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
-        let x: CGFloat = isRightToLeft ? bounds.width - style.leadingInset : 2
+        // 文字置中，繪製區域就要吃滿整個時間欄，不再為右對齊留邊距
+        let x: CGFloat = isRightToLeft ? bounds.width - style.leadingInset : 0
 
         for (tickIndex, time) in timelineView.times.enumerated() where tickIndex != tickIndexToRemove {
+            // 文字垂直居中在刻度線上，但不能超出上緣 —— verticalInset 為 0 時第一個刻度會被裁掉
             let timeRect = CGRect(x: x,
-                                  y: tickYs[tickIndex] - 7,
-                                  width: style.leadingInset - 8,
+                                  y: max(0, tickYs[tickIndex] - 7),
+                                  width: style.leadingInset,
                                   height: style.font.pointSize + 2)
             NSString(string: time).draw(in: timeRect, withAttributes: attributes)
         }

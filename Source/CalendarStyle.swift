@@ -36,9 +36,9 @@ public enum DateStyle {
     public func inHourRange(startDate: Date, endDate: Date, calendar: Calendar) -> Bool {
         switch self {
         case let .custom(start24Hour, end24Hour, _):
-            let date = Date() // 取得目前時間
             let startDateHour = calendar.component(.hour, from: startDate)
-            let endDateHour = calendar.component(.hour, from: endDate)
+            // 結束時間貼齊整點時要算成前一小時，否則「營業結束前最後一格」會因為進到下一小時被整筆濾掉
+            let endDateHour = calendar.component(.hour, from: endDate.addingTimeInterval(-1))
             return startDateHour >= start24Hour && endDateHour <= end24Hour
         default:
             return true
@@ -74,6 +74,8 @@ public struct DaySelectorStyle {
     
     public var font = UIFont.systemFont(ofSize: 18)
     public var todayFont = UIFont.boldSystemFont(ofSize: 18)
+    /// regular size class 時排在日期左邊的星期文字（DayDateCell）
+    public var weekdayFont = UIFont.systemFont(ofSize: 16)
   
     public init() {}
 }
@@ -123,8 +125,22 @@ public struct TimelineStyle {
     public var verticalInset: CGFloat = 10
     /// 左側時間標籤區域的寬度，事件從這個位置之後開始繪製
     public var leadingInset: CGFloat = 53
-    /// 相鄰事件之間的間距（像素）
+    /// 捲動時固定在頂部的員工名稱／業績列高度
+    public var groupNameViewHeight: CGFloat = 30
+    /// 事件卡片左右貼著群組欄邊線時的內縮（pt）；同時段並排的內側改用 eventGap 的一半。規則見 EventInsetRule
+    public var eventHorizontalPadding: CGFloat = 2
+    /// 事件卡片上下那一邊落在刻度線上、或是空白時的內縮（pt）；
+    /// 貼著另一張卡且不在線上時改用 eventGap 的一半。規則見 EventInsetRule
+    public var eventVerticalPadding: CGFloat = 2
+    /// 同一個小時格裡兩張卡之間的距離（pt），兩張各出一半；0 表示不分開算，四邊都用 padding。
+    /// 留白一律在這裡用 pt 表達，不要靠縮 event 的 startDate／endDate 製造 ——
+    /// 那會被 verticalDiff 放大成不同比例，也會污染 overlap 判斷與點擊命中範圍。規則見 EventInsetRule
     public var eventGap: CGFloat = 0
+    /// 表頭列以下、時間欄右側那整塊時段內容的外框線寬，0 表示不畫。
+    /// 這個框是獨立的一層，不由表頭下底線與欄分隔線兼任
+    public var contentBorderWidth: CGFloat = 0
+    /// 外框顏色
+    public var contentBorderColor: UIColor = SystemColors.systemSeparator
     /// 分組資訊（多人行事曆時，每個人一個 group）
     public var group: [TimelineGroup] = []
     var groupCount: Int {
@@ -132,7 +148,7 @@ public struct TimelineStyle {
     }
 
     var totalGroupWidth: CGFloat {
-        return group.map { $0.width }.reduce(0, {$0 + $1})
+        return group.map { $0.width }.reduce(0) { $0 + $1 }
     }
 
     public var fixWidthGroupCount: Int = 7
@@ -153,7 +169,6 @@ public struct TimelineStyle {
 //        }
 //    }
 
-
     func contentWidth() -> CGFloat {
         return leadingInset + totalGroupWidth
     }
@@ -163,7 +178,7 @@ public struct TimelineStyle {
     }
 
     func groupX(index: Int) -> CGFloat {
-        return group.prefix(index).map { $0.width }.reduce(0, {$0 + $1})
+        return group.prefix(index).map { $0.width }.reduce(0) { $0 + $1 }
     }
 
     public init() {}
@@ -183,12 +198,9 @@ public struct AllDayViewStyle {
     public init() {}
 }
 
-
-
-
 private extension Collection {
     /// Returns the element at the specified index if it is within bounds, otherwise nil.
-    subscript (safe index: Index) -> Element? {
+    subscript(safe index: Index) -> Element? {
         return indices.contains(index) ? self[index] : nil
     }
 }

@@ -133,12 +133,18 @@ public final class TimelineView: UIView {
 
         allDayView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 0).isActive = true
         allDayView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 0).isActive = true
-        allDayView.heightAnchor.constraint(equalToConstant: Self.groupNameViewHeight).isActive = true
+        let heightConstraint = allDayView.heightAnchor.constraint(equalToConstant: style.groupNameViewHeight)
+        heightConstraint.isActive = true
+        allDayViewHeightConstraint = heightConstraint
         return allDayView
     }()
 
-    /// 捲動時固定在頂部的員工名稱／業績列高度。
-    /// public 讓 App 端的浮層（如總表整月選日）能定位在此列下方，不遮住員工業績
+    /// 表頭列高跟著 style.groupNameViewHeight，updateStyle 時更新
+    private var allDayViewHeightConstraint: NSLayoutConstraint?
+
+    /// 捲動時固定在頂部的員工名稱／業績列的預設高度。
+    /// 實際高度以 style.groupNameViewHeight 為準；保留 public 讓 App 端的浮層
+    /// （如總表整月選日）沿用預設值定位在此列下方
     public static let groupNameViewHeight: CGFloat = 30
   
     /// 全天視圖的實際高度
@@ -154,6 +160,13 @@ public final class TimelineView: UIView {
     /// 時間軸的完整高度（包含所有小時）
     public var fullHeight: CGFloat {
         return style.verticalInset * 2 + style.verticalDiff * CGFloat(style.dateStyle.count)
+    }
+
+    /// 事件內縮規則，layout 與測試共用同一份
+    var eventInsetRule: EventInsetRule {
+        return EventInsetRule(verticalPadding: style.eventVerticalPadding,
+                              horizontalPadding: style.eventHorizontalPadding,
+                              gap: style.eventGap)
     }
 
     /// 日曆區域的寬度（總寬度減去左側時間標籤寬度）
@@ -326,6 +339,8 @@ public final class TimelineView: UIView {
         style = newStyle
         invalidateTickYs()
         allDayView.updateStyle(style.allDayStyle)
+        allDayViewHeightConstraint?.constant = style.groupNameViewHeight
+        nowLine.leadingInset = style.leadingInset
         nowLine.updateStyle(style.timeIndicator)
         groupNameView.updateStyle(newStyle)
         allDayView.isHidden = (allDayLayoutAttributes.count == 0 && style.groupCount <= 1)
@@ -390,9 +405,9 @@ public final class TimelineView: UIView {
             context?.setLineWidth(hourLineHeight)
             let xStart: CGFloat = {
                 if rightToLeft {
-                    return bounds.width - 53
+                    return bounds.width - style.leadingInset
                 } else {
-                    return 53
+                    return style.leadingInset
                 }
             }()
             let xEnd: CGFloat = {
@@ -444,25 +459,26 @@ public final class TimelineView: UIView {
         if eventViews.isEmpty { return }
         
         let startTime = CFAbsoluteTimeGetCurrent()
+        let isRightToLeft = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft
+        // 留白一律在這裡用 pt 內縮，event 的 startDate／endDate 保持真實時段。規則見 EventInsetRule
+        let rule = eventInsetRule
         for (idx, attributes) in regularLayoutAttributes.enumerated() {
             let descriptor = attributes.descriptor
             let eventView = eventViews[idx]
-            eventView.frame = attributes.frame
-        
-            // 處理 RTL（從右到左）佈局
-            var x: CGFloat
-            if UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft {
-                x = bounds.width - attributes.frame.minX - attributes.frame.width
-            } else {
-                x = attributes.frame.minX
-            }
-            // 添加內邊距
-            let widthPadding: CGFloat = 2.0
-            let heightPadding: CGFloat = 2.0
-            eventView.frame = CGRect(x: x + widthPadding,
-                                     y: attributes.frame.minY + heightPadding,
-                                     width: attributes.frame.width - style.eventGap - (widthPadding * 2),
-                                     height: attributes.frame.height - style.eventGap - (heightPadding * 2))
+
+            let x = isRightToLeft
+                ? bounds.width - attributes.frame.minX - attributes.frame.width
+                : attributes.frame.minX
+            let insets = rule.insets(top: attributes.topEdge,
+                                     bottom: attributes.bottomEdge,
+                                     columnIndex: attributes.columnIndex,
+                                     columnCount: attributes.columnCount,
+                                     isRightToLeft: isRightToLeft)
+
+            eventView.frame = CGRect(x: x + insets.left,
+                                     y: attributes.frame.minY + insets.top,
+                                     width: attributes.frame.width - insets.left - insets.right,
+                                     height: attributes.frame.height - insets.top - insets.bottom)
             eventView.updateWithDescriptor(event: descriptor)
         }
         let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000 // 轉換為毫秒
@@ -492,7 +508,20 @@ public final class TimelineView: UIView {
 //    }
     }
 
+    /// 算完同一個群組欄所有 frame 後，把每一張卡的上下緣落在什麼上寫回 attributes。
+    /// 判定本體在 `VerticalEdge.resolve`，這裡只負責取 frame、寫回
+    private func markVerticalEdges(in events: [EventLayoutAttributes]) {
+        let edges = VerticalEdge.resolve(frames: events.map { $0.frame }, tickYs: tickYs)
+        for (event, edge) in zip(events, edges) {
+            event.topEdge = edge.top
+            event.bottomEdge = edge.bottom
+        }
+    }
+
     /// 檢查日期範圍是否與其他日期範圍重疊
+    ///
+    /// 端點相接（前一筆結束 == 後一筆開始）不算重疊，與 `Event.totalOverlapPeriods` 的掃描線一致；
+    /// `ClosedRange.overlaps` 會把 12:00...12:30 與 12:30...13:00 判成重疊，時段格用真實時間時會被誤濾
     /// - Parameters:
     ///   - date: 要檢查的日期範圍
     ///   - dates: 其他日期範圍陣列
@@ -500,8 +529,7 @@ public final class TimelineView: UIView {
     /// - Returns: 如果重疊則返回 true，否則返回 false
     public class func overlap(date: ClosedRange<Date>, dates: [ClosedRange<Date>], eventGap: CGFloat) -> Bool {
         for element in dates {
-            let overlap = date.overlaps(element)
-            if overlap == true {
+            if date.lowerBound < element.upperBound, element.lowerBound < date.upperBound {
                 return true
             }
         }
@@ -615,18 +643,22 @@ public final class TimelineView: UIView {
                     guard let column = eventColumns[ObjectIdentifier(event)] else { continue }
 
                     let startY = dateToY(event.descriptor.datePeriod.lowerBound)
-                    var endY = dateToY(event.descriptor.datePeriod.upperBound)
-
-                    // 跨日 event 的 endY 會小於 startY，clamp 到 timeline 底部
+                    // 超出營業時段的 event 收在 timeline 底部，不讓卡片伸到捲不到的地方
                     // https://redmine.ezpretty.com.tw/issues/24342
+                    let bottomY = CGFloat(style.dateStyle.count) * style.verticalDiff + style.verticalInset
+                    var endY = min(dateToY(event.descriptor.datePeriod.upperBound), bottomY)
                     if endY < startY {
-                        endY = CGFloat(style.dateStyle.count) * style.verticalDiff + style.verticalInset
+                        endY = bottomY
                     }
 
                     let x = groupX + style.leadingInset + CGFloat(column) * columnWidth
+                    event.columnIndex = column
+                    event.columnCount = columns.count
                     event.frame = CGRect(x: x, y: startY, width: columnWidth, height: endY - startY)
                 }
             }
+
+            markVerticalEdges(in: groupEvents)
         }
 
         let elapsedTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000 // 轉換為毫秒
@@ -707,11 +739,13 @@ public final class TimelineView: UIView {
     }
 
     private func tickY(for timeString: String, index: Int) -> CGFloat {
+        // "24:00" 這種超過一天的刻度（打烊在午夜的店）折成隔天，才能與跨日事件的 dateToY 對得上
         guard let minutes = Self.minutes(fromHHmm: timeString),
-              let tickDate = calendar.date(bySettingHour: minutes / 60,
+              let day = calendar.date(byAdding: .day, value: minutes / (24 * 60), to: date),
+              let tickDate = calendar.date(bySettingHour: (minutes / 60) % 24,
                                            minute: minutes % 60,
                                            second: 0,
-                                           of: date)
+                                           of: day)
         else {
             return style.verticalInset + CGFloat(index) * style.verticalDiff
         }
@@ -733,7 +767,7 @@ public final class TimelineView: UIView {
     public func dateToY(_ date: Date) -> CGFloat {
         let provisionedDate = date.dateOnly(calendar: calendar)
         let timelineDate = self.date.dateOnly(calendar: calendar)
-        var dayOffset: CGFloat = 0
+        var dayOffset = 0
         if provisionedDate > timelineDate {
             // 事件結束於下一天
             dayOffset += 1
@@ -741,12 +775,13 @@ public final class TimelineView: UIView {
             // 事件開始於前一天
             dayOffset -= 1
         }
-        let fullTimelineHeight = CGFloat(style.dateStyle.count) * style.verticalDiff
-        let hour = component(component: .hour, from: date)
+        // 跨日以 24 小時折進小時數再換算；營業時段不是全天時 timeline 高度不等於一天，
+        // 拿它當一天的位移會把隔天 00:15 算到營業時段中間
+        let hour = component(component: .hour, from: date) + 24 * dayOffset
         let minute = component(component: .minute, from: date)
         let hourY = CGFloat(style.dateStyle.real24Hour(original24Hour: hour)) * style.verticalDiff + style.verticalInset
         let minuteY = CGFloat(minute) * style.verticalDiff / 60
-        return hourY + minuteY + fullTimelineHeight * dayOffset
+        return hourY + minuteY
     }
 
     /// 將 Y 座標轉換為日期

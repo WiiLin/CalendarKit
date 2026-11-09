@@ -5,8 +5,6 @@ public final class DayDateCell: UIView, DaySelectorItemProtocol {
     private let dayLabel = UILabel()
     private let stackView = UIStackView()
 
-    private var regularSizeClassFontSize: CGFloat = 16
-
     public var date = Date() {
         didSet {
             dateLabel.date = date
@@ -76,7 +74,7 @@ public final class DayDateCell: UIView, DaySelectorItemProtocol {
 
     private func updateState() {
         let isWeekend = isAWeekend(date: date)
-        dayLabel.font = UIFont.systemFont(ofSize: regularSizeClassFontSize)
+        dayLabel.font = style.weekdayFont
         dayLabel.textColor = isWeekend ? style.weekendTextColor : style.inactiveTextColor
         dateLabel.updateState()
         updateDayLabel()
