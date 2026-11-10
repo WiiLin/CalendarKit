@@ -14,12 +14,13 @@ CalendarKit is a Swift calendar UI library for iOS/iPadOS/Mac Catalyst that prov
 
 ## Build & Development
 
-**Swift Package Manager (primary):**
-```bash
-swift build
-```
+本 fork 只以 CocoaPods path pod 被 App 使用（ezstore-ios `Podfile`：`pod 'CalendarKit', :path=>'../CalendarKit'`）。
 
-**CocoaPods:**
+**驗編譯 = 在 ezstore-ios 跑 device build**（指令見該 repo `CLAUDE.md`）；改完 Source 不需要 `pod install`，新增／刪除檔案才要。
+
+⚠️ SPM 這條路是壞的，NEVER 拿來當 gate（2026-11-10 實跑）：`swift build` 在 macOS 上 `no such module 'UIKit'`；`xcodebuild -scheme CalendarKit -destination 'generic/platform=iOS' build` 因 `Package.swift` 宣告 iOS 9 而原始碼用到 iOS 13 API（`SwipeLabelView.swift` 的 `SymbolConfiguration`）失敗，且 `resources: [.process("Localizations")]` 路徑對不上。
+
+**Demo app（手動驗證 UI）:**
 ```bash
 cd CalendarKitDemo && pod install
 # Then open .xcworkspace in Xcode
@@ -30,7 +31,7 @@ cd CalendarKitDemo && pod install
 swiftformat Source/
 ```
 
-There is no test suite in this project. Use the `CalendarKitDemo/` app for manual verification.
+`Tests/CalendarKitTests/` 有單元測試（2 檔），但只掛在壞掉的 SPM target 上，目前沒有可跑的指令——gate 只涵蓋 format＋App 編譯。行為驗證用 `CalendarKitDemo/` 或 ezstore-ios 實機。
 
 ## Code Style
 
@@ -84,7 +85,7 @@ Customization via `CalendarStyle` struct with nested style objects (`TimelineSty
 
 ### Localization
 
-12 languages supported via `.lproj` bundles in `Localizations/`. Uses iOS system locale for month/day names and first day of week.
+11 languages supported via `.lproj` bundles in `Localizations/`（缺 ja／ms／vi）. Uses iOS system locale for month/day names and first day of week.
 
 ## Source Layout
 
